@@ -33,6 +33,8 @@ evidence/transcripts/
 evidence/hashes/
 evidence/video/
 reports/
+.pi/
+.pi-osint/
 
 # Docker Local Volume Data
 .data/
