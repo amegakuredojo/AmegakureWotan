@@ -1,0 +1,45 @@
+# Karasugakure gitignore
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache & Builds
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+
+# Pi Repository (Cloned for reference)
+pi-repo/
+
+# Local User Configurations & Evidence Vault
+# (These folders store operator intelligence and should not be tracked)
+sessions/
+evidence/screenshots/
+evidence/html/
+evidence/transcripts/
+evidence/hashes/
+evidence/video/
+reports/
+
+# Docker Local Volume Data
+.data/
+neo4j_data/
+neo4j_logs/
+memgraph_data/
+
+# OS-specific
+.DS_Store
+Thumbs.db

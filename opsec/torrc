@@ -1,0 +1,5 @@
+# Default torrc configuration for Karasugakure
+SocksPort 127.0.0.1:9050
+ControlPort 127.0.0.1:9051
+CookieAuthentication 1
+DataDirectory ~/.karasugakure/opsec/tor_data

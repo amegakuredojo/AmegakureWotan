@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Karasugakure pi-osint wrapper
+# Runs the custom fork of Pi Agent using bun
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export PI_CODING_AGENT="true"
+
+# Execute bun CLI wrapper
+exec bun run --bun "$SCRIPT_DIR/pi-repo/packages/coding-agent/src/cli.ts" "$@"

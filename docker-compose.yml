@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Option A: Neo4j Graph Database
+  neo4j:
+    image: neo4j:5.18.0-community
+    container_name: karasugakure-neo4j
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+  # Option B: Memgraph Graph Database (Alternative)
+  # Uncomment if you prefer Memgraph over Neo4j
+  # memgraph:
+  #   image: memgraph/memgraph-platform:latest
+  #   container_name: karasugakure-memgraph
+  #   ports:
+  #     - "7687:7687" # Bolt
+  #     - "3000:3000" # Memgraph Lab
+  #   volumes:
+  #     - memgraph_data:/var/lib/memgraph
+
+  # Tor SOCKS5 Proxy Service (OPSEC Adapter)
+  # Provides isolated, containerized Tor routing without host network modifications
+  tor-socks-proxy:
+    image: peterdavehello/tor-socks-proxy:latest
+    container_name: karasugakure-tor-proxy
+    ports:
+      - "9050:9150" # SOCKS5 proxy port (maps container Tor SOCKS to host 9050)
+    restart: always
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  memgraph_data:
