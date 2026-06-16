@@ -1,0 +1,124 @@
+# ─── STAGE 1: BUILDER ───────────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS builder
+
+# Instalar dependencias del sistema necesarias para compilar wheels
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    libffi-dev \
+    libssl-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Clonar repositorios de herramientas OSINT para compilar sus dependencias C
+RUN git clone --branch v5.1.2 --depth 1 https://github.com/lanmaster53/recon-ng.git /opt/recon-ng \
+    && git clone --branch 4.4.0 --depth 1 https://github.com/laramies/theHarvester.git /opt/theHarvester \
+    && sed -i 's/aiohttp==3.8.5/aiohttp>=3.9.0/g' /opt/theHarvester/requirements/base.txt \
+    && sed -i 's/uvloop==0.17.0/uvloop>=0.19.0/g' /opt/theHarvester/requirements/base.txt
+
+# Copiar manifests del proyecto
+COPY pyproject.toml ./
+COPY src/ ./src/
+
+# Instalar todas las dependencias (proyecto + dev + herramientas OSINT) en el directorio aislado /install
+RUN pip install --upgrade pip --no-cache-dir \
+    && pip install --prefix=/install --no-cache-dir ".[dev]" \
+    && pip install --prefix=/install --no-cache-dir build \
+    && pip install --prefix=/install --no-cache-dir sherlock-project>=0.14.3 \
+    && pip install --prefix=/install --no-cache-dir -r /opt/recon-ng/REQUIREMENTS \
+    && pip install --prefix=/install --no-cache-dir -r /opt/theHarvester/requirements/base.txt \
+    && pip install --prefix=/install --no-cache-dir --upgrade websockets
+
+# ─── STAGE 2: RUNTIME ───────────────────────────────────────────────────────
+FROM python:3.12-slim-bookworm AS runtime
+
+# Metadatos de imagen — el IMAGE_BUILD_HASH se inyecta en build time
+# para que el ForensicAuditLedger lo registre en el primer bloque
+ARG IMAGE_BUILD_HASH="unset"
+ARG BUILD_DATE="unset"
+ENV KARASU_IMAGE_HASH=${IMAGE_BUILD_HASH}
+ENV KARASU_BUILD_DATE=${BUILD_DATE}
+
+# Instalar herramientas OSINT del sistema y dependencias runtime (sin gcc ni compiladores)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Network OSINT tools
+    nmap \
+    whois \
+    dnsutils \
+    netcat-openbsd \
+    curl \
+    wget \
+    # Web capture para Skadi/bundle (headless)
+    wkhtmltopdf \
+    # Chromium para Selenium headless (fallback de wkhtmltopdf)
+    chromium \
+    chromium-driver \
+    # Cryptographic tools
+    gnupg \
+    gpg \
+    # Proxychains para wrapping de subprocesos legacy
+    proxychains4 \
+    # Git (requerido para gitleaks hook y tool version hash)
+    git \
+    # Timezone data (necesario para correcta serialización de timestamps)
+    tzdata \
+    # SSL certs actualizados
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar las instalaciones de python compiladas desde el builder
+COPY --from=builder /install /usr/local
+
+# Copiar los repositorios OSINT ya clonados desde el builder
+COPY --from=builder /opt/recon-ng /opt/recon-ng
+COPY --from=builder /opt/theHarvester /opt/theHarvester
+
+# Crear enlaces simbólicos para los scripts OSINT
+RUN ln -s /opt/recon-ng/recon-ng /usr/local/bin/recon-ng \
+    && ln -s /opt/theHarvester/theHarvester.py /usr/local/bin/theharvester
+
+# Instalar amass (Go binary, version v4.2.0 pinned)
+RUN apt-get update && apt-get install -y --no-install-recommends golang-go \
+    && go install github.com/owasp-amass/amass/v4/...@v4.2.0 \
+    && cp /root/go/bin/amass /usr/local/bin/amass \
+    && apt-get remove -y golang-go && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/* /root/go/pkg
+
+# Crear usuario no-root con UID fijo para aislamiento
+RUN groupadd -g 1001 karasu \
+    && useradd -u 1001 -g karasu -m -s /bin/bash -d /home/karasu karasu
+
+# Copiar código fuente y assets del proyecto
+COPY --chown=karasu:karasu src/ /app/src/
+COPY --chown=karasu:karasu skills/ /app/skills/
+COPY --chown=karasu:karasu templates/ /app/templates/
+COPY --chown=karasu:karasu prompts/ /app/prompts/
+COPY --chown=karasu:karasu opsec/ /app/opsec/
+COPY --chown=karasu:karasu tests/ /app/tests/
+COPY --chown=karasu:karasu docker/karasu/entrypoint.sh /entrypoint.sh
+
+# Copiar proxychains config al lugar que el sistema espera
+COPY opsec/proxychains4.conf /etc/proxychains4.conf
+
+# Permisos
+RUN chmod +x /entrypoint.sh \
+    && chmod 600 /app/opsec/torrc \
+    && chown -R karasu:karasu /app
+
+# Directorio de trabajo y datos del operador
+WORKDIR /app
+RUN mkdir -p /data/evidence /data/sessions /data/reports /data/graph \
+    && chown -R karasu:karasu /data
+
+USER karasu
+
+# Variable para que Python encuentre el paquete
+ENV PYTHONPATH=/app/src
+ENV KARASU_DATA_DIR=/data
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["--help"]

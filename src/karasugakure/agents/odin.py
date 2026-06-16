@@ -361,9 +361,7 @@ def freeze_node(state: PipelineState) -> PipelineState:
         state["errors"].append(str(e))
         state["status"] = "failed"
         
-    save_checkpoint(state)
-    return state
-
+    
 def report_node(state: PipelineState) -> PipelineState:
     logger.info("--- [PHASE: REPORT] ---")
     state["phase"] = "report"
@@ -373,12 +371,39 @@ def report_node(state: PipelineState) -> PipelineState:
         return state
     
     try:
+        import os
+        import uuid
+        import time
+        import hashlib
+
+        # Enforce execution contract fields
+        run_id = state.get("session_id") or str(uuid.uuid4())
+        schema_version = "9.4"
+        operator_id = os.environ.get("KARASU_OPERATOR_ID") or "operator-default"
+        target_id = state["target"]
+        timestamp_val = time.time()
+        time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(timestamp_val))
+        
+        # Calculate evidence hash from state findings & correlations
+        serialized_data = json.dumps({"findings": state["findings"], "correlations": state["correlations"]}, sort_keys=True)
+        evidence_hash = hashlib.sha256(serialized_data.encode("utf-8")).hexdigest()
+        
+        hypothesis_id = f"hyp-{run_id}"
+        phase_id = "report"
+
         lines = [
             f"# OSINT INVESTIGATION DOSSIER: {state['target']}",
-            f"Session ID: `{state['session_id']}`",
-            f"Status: {state['status'].upper()}",
-            f"Consensus Status: {state['consensus_status'].upper()}",
-            f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            "## STATUS: CONFIDENTIAL",
+            "",
+            "### EXECUTION CONTRACT METADATA",
+            f"- **Run ID**: `{run_id}`",
+            f"- **Schema Version**: `{schema_version}`",
+            f"- **Operator ID**: `{operator_id}`",
+            f"- **Target ID**: `{target_id}`",
+            f"- **Timestamp**: `{time_str}`",
+            f"- **Evidence Hash**: `{evidence_hash}`",
+            f"- **Hypothesis ID**: `{hypothesis_id}`",
+            f"- **Phase ID**: `{phase_id}`",
             "",
             "## Findings Summary",
         ]

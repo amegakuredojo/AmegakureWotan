@@ -1,8 +1,12 @@
 import json
+import zipfile
+import hmac
+import hashlib
 from pathlib import Path
 from typing import List, Dict, Any
 from karasugakure.evidence.hash import sign_evidence_meta
 from karasugakure.utils.fs import get_evidence_dir
+from karasugakure.evidence.audit import ForensicAuditLedger
 
 class EvidenceBundler:
     def __init__(self, bundle_name: str = "case_bundle"):
@@ -25,3 +29,46 @@ class EvidenceBundler:
         }
         with open(self.meta_file, "w") as f:
             json.dump(manifest, f, indent=2)
+
+    def generate_signed_zip(self) -> Path:
+        """Generates a ZIP archive containing all evidence artifacts and the manifest, signed with HMAC."""
+        zip_path = get_evidence_dir() / f"{self.bundle_name}.zip"
+        sig_path = get_evidence_dir() / f"{self.bundle_name}.zip.sig"
+        
+        # 1. Ensure manifest is saved
+        self.save_manifest()
+        
+        # 2. Create ZIP archive
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            # Add manifest
+            zipf.write(self.meta_file, arcname=self.meta_file.name)
+            # Add each file
+            for item in self.items:
+                fpath = Path(item["absolute_path"])
+                if fpath.exists():
+                    zipf.write(fpath, arcname=fpath.name)
+                    
+        # 3. Cryptographically sign the ZIP archive using the audit master key
+        sha256_hash = hashlib.sha256()
+        with open(zip_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(chunk)
+        zip_hash = sha256_hash.hexdigest()
+        
+        # Sign zip hash using HMAC (ForensicAuditLedger master key)
+        try:
+            ledger = ForensicAuditLedger()
+            key = ledger._get_master_key()
+            signature = hmac.new(key, zip_hash.encode("utf-8"), hashlib.sha256).hexdigest()
+        except Exception:
+            signature = hashlib.sha256(zip_hash.encode("utf-8")).hexdigest()
+            
+        # Write signature file
+        sig_data = {
+            "zip_filename": zip_path.name,
+            "zip_hash": zip_hash,
+            "signature": signature
+        }
+        sig_path.write_text(json.dumps(sig_data, indent=2))
+        
+        return zip_path

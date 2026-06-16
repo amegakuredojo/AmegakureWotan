@@ -22,8 +22,18 @@ class HelAgent(BaseAgent):
 
         # 2. Define target-isolated execution logic
         def scan_darkweb():
+            import os
+            import time
+            import hashlib
             import subprocess
+            from pathlib import Path
+            from bs4 import BeautifulSoup
+            from karasugakure.policy.opsec import check_tor_socks_proxy
+            from karasugakure.config import get_config
+            from karasugakure.adapters.darkweb import DarkWebAdapter
             
+            config = get_config()
+
             # OPSEC Isolation: scrub child environment variables
             for key in list(os.environ.keys()):
                 if "NEO4J" in key or "SECRET" in key or "AWS" in key or "GCP" in key:
@@ -49,17 +59,17 @@ class HelAgent(BaseAgent):
             freshness_window = 7 * 86400 # 7 days freshness window
 
             # Skill wrapper check
-            base_dir = "/home/lugh/AmegakureDojo/Karasugakure"
-            wrapper_path = os.path.join(base_dir, "skills", "darkweb", "onion_spider.py")
+            skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
+            wrapper_path = skills_base / "darkweb" / "onion_spider.py"
             mock_onion = "leaks777xxxxxxxx.onion"
             
-            if os.path.exists(wrapper_path):
+            if wrapper_path.exists():
                 try:
                     logger.info(f"Hel executing onion_spider skill wrapper at: {wrapper_path}")
-                    python_bin = os.path.join(base_dir, ".venv", "bin", "python")
-                    if not os.path.exists(python_bin):
-                        python_bin = "python3"
-                    proc_res = subprocess.run([python_bin, wrapper_path, mock_onion], capture_output=True, text=True, check=True)
+                    python_bin = skills_base.parent / ".venv" / "bin" / "python"
+                    if not python_bin.exists():
+                        python_bin = Path("python3")
+                    proc_res = subprocess.run([str(python_bin), str(wrapper_path), mock_onion], capture_output=True, text=True, check=True)
                     logger.info(f"onion_spider stdout: {proc_res.stdout.strip()}")
                 except Exception as e:
                     logger.error(f"Hel failed executing onion_spider: {e}")
@@ -80,7 +90,9 @@ class HelAgent(BaseAgent):
             hashes_dir.mkdir(parents=True, exist_ok=True)
 
             accepted_onion_sites = []
-            manifests = []
+            leaks_found = []
+
+            adapter = DarkWebAdapter()
 
             for site in candidates:
                 onion = site["onion"]
@@ -103,28 +115,47 @@ class HelAgent(BaseAgent):
                     logger.warning(f"Hel: Rejecting onion site '{onion}' - survivability score ({survivability:.2f}) is too low.")
                     continue
 
+                # Query onion
+                onion_url = f"http://{onion}"
+                html_content = adapter.query_onion(onion_url)
+                if html_content is None:
+                    logger.warning(f"Hel: onion {onion} unreachable, skipping.")
+                    continue
+
+                # Parse real content
+                soup = BeautifulSoup(html_content, "html.parser")
+                title = soup.title.string.strip() if (soup.title and soup.title.string) else site.get("title", "Unknown")
+
+                # Parse leak database for real leaks
+                parsed_leaks = adapter.parse_leak_db(html_content, query)
+                for pl in parsed_leaks:
+                    leaks_found.append({
+                        "db": title,
+                        "match": query,
+                        "details": pl
+                    })
+
                 # Capture screenshot, HTML, and hash manifest
                 html_path = html_dir / f"{onion}.html"
                 screenshot_path = screenshots_dir / f"{onion}.png"
                 hash_path = hashes_dir / f"{onion}.sha256"
 
-                # Write mock HTML page
-                mock_html = f"<html><body><h1>{site['title']}</h1><p>Query match: {query}</p></body></html>"
-                html_path.write_text(mock_html, encoding="utf-8")
+                # Write real HTML page
+                html_path.write_text(html_content, encoding="utf-8")
                 
                 # Write mock PNG binary data
                 mock_png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82"
                 screenshot_path.write_bytes(mock_png)
 
                 # Compute manifest hashes
-                html_hash = hashlib.sha256(mock_html.encode("utf-8")).hexdigest()
+                html_hash = hashlib.sha256(html_content.encode("utf-8")).hexdigest()
                 png_hash = hashlib.sha256(mock_png).hexdigest()
                 hash_manifest = hashlib.sha256(f"html:{html_hash};png:{png_hash}".encode("utf-8")).hexdigest()
                 hash_path.write_text(hash_manifest)
 
                 site_results = {
                     "onion": onion,
-                    "title": site["title"],
+                    "title": title,
                     "survivability_score": survivability,
                     "evidence_manifest": {
                         "html_path": str(html_path),
@@ -136,12 +167,13 @@ class HelAgent(BaseAgent):
                 }
                 accepted_onion_sites.append(site_results)
 
+            if not leaks_found:
+                leaks_found = [{"db": "No leaks found", "match": query}]
+
             return {
                 "query": query,
                 "onion_sites": accepted_onion_sites,
-                "leaks_found": [
-                    {"db": "Exploit.in Dump", "match": query}
-                ],
+                "leaks_found": leaks_found,
                 "route_context": {
                     "proxy": tor_proxy_str,
                     "socks_active": tor_active

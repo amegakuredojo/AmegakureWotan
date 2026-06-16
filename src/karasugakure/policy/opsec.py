@@ -126,8 +126,25 @@ def run_isolated_process(func: Callable, *args, **kwargs) -> Any:
 
     q = Queue()
     p = Process(target=worker, args=(q, func, args, kwargs))
+    
+    ISOLATION_TIMEOUT = int(os.environ.get("KARASU_ISOLATION_TIMEOUT", "120"))  # 2 min default
+
     p.start()
-    p.join()
+    p.join(timeout=ISOLATION_TIMEOUT)
+
+    if p.is_alive():
+        logger.error(
+            f"Isolated process exceeded timeout of {ISOLATION_TIMEOUT}s. "
+            f"Sending SIGTERM."
+        )
+        p.terminate()
+        p.join(timeout=5)
+        if p.is_alive():
+            p.kill()  # SIGKILL si SIGTERM no fue suficiente
+        raise TimeoutError(
+            f"Isolated process killed after {ISOLATION_TIMEOUT}s timeout. "
+            f"Possible Tor circuit hang or network stall."
+        )
     
     if q.empty():
         raise RuntimeError("Isolated process terminated unexpectedly without returning a result.")

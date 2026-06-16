@@ -33,8 +33,6 @@ evidence/transcripts/
 evidence/hashes/
 evidence/video/
 reports/
-.pi/
-.pi-osint/
 
 # Docker Local Volume Data
 .data/
@@ -45,3 +43,6 @@ memgraph_data/
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# Environment Secrets
+.env

@@ -26,6 +26,7 @@ from karasugakure.agents.loki import LokiAgent
 from karasugakure.agents.hel import HelAgent
 from karasugakure.agents.mimir import MimirAgent
 from karasugakure.agents.fenrir import FenrirAgent
+from karasugakure.agents.huginn import HuginnAgent
 from karasugakure.evidence.audit import ForensicAuditLedger
 
 audit_ledger = ForensicAuditLedger()
@@ -181,6 +182,52 @@ def darkweb(query: str = typer.Argument(..., help="Search query or leak keyword"
         table.add_row("Leak Db Match", f"{leak['db']}: {leak['match']}")
         
     console.print(table)
+
+@app.command()
+def entity(
+    target: str = typer.Argument(..., help="Target Identity or Corporate Entity"),
+    entity_type: str = typer.Option("Persona física", "--type", "-t", help="Persona física, Persona jurídica, or Mixto")
+):
+    """Mapear y validar inteligencia humana y corporativa (Huginn - Dominio 7)."""
+    huginn = HuginnAgent()
+    console.print(f"Starting Domain 7 Entity Intelligence on [cyan]{target}[/cyan] ({entity_type}) using [magenta]Huginn[/magenta]...")
+    results = huginn.execute(target, entity_type=entity_type)
+    
+    # Audit log
+    audit_ledger.log_execution(
+        agent_name="huginn",
+        action="entity",
+        parameters={"target": target, "entity_type": entity_type},
+        findings=[results],
+        evidence_files=[],
+        proxy_route="tor"
+    )
+    
+    # HES Interpretation
+    hes = results["hes"]
+    hes_interp = "Bajo"
+    if hes >= 85:
+        hes_interp = "Crítico con depuración humana obligatoria" if hes < 94 else "Crítico"
+    elif hes >= 75: hes_interp = "Crítico"
+    elif hes >= 50: hes_interp = "Alto"
+    elif hes >= 25: hes_interp = "Medio"
+
+    console.print(Panel(
+        f"[bold green]HUMINT OSINT BRIEF[/bold green]\n"
+        f"Target: [cyan]{results['target']}[/cyan]\n"
+        f"Type: [yellow]{results['entity_type']}[/yellow]\n"
+        f"Certainty: [bold]{results['certainty']}%[/bold] ({results['status']})\n"
+        f"HES Score: [bold magenta]{hes:.1f}/100[/bold magenta] ({hes_interp})\n\n"
+        f"[bold]Hypothesis:[/bold] {results['hypothesis']['title']}\n"
+        f"Context: {results['hypothesis']['context']}\n"
+        f"Vulnerability: {results['hypothesis']['vulnerability']}",
+        title="Huginn Entity Resolution"
+    ))
+    
+    if "run_id" in results:
+        console.print(f"[bold green]✔[/bold green] W3C PROV Entity graph ingested to Neo4j (Run ID: [yellow]{results['run_id']}[/yellow]).")
+    else:
+        console.print("[bold yellow]⚠[/bold yellow] PROV Graph ingestion skipped (Database offline).")
 
 @app.command()
 def archive(url: str = typer.Argument(..., help="URL to inspect historical copies")):

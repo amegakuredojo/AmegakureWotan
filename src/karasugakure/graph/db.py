@@ -47,6 +47,22 @@ class GraphDB:
                 self._driver = None
             raise e
 
+    def execute_transaction(self, operations: list) -> List[Any]:
+        """Executes multiple Cypher operations atomically. Rolls back all on any failure."""
+        driver = self.connect()
+        with driver.session(database=self.config.database) as session:
+            try:
+                with session.begin_transaction() as tx:
+                    results = []
+                    for cypher, params in operations:
+                        result = tx.run(cypher, params)
+                        results.append(result.data())
+                    tx.commit()
+                    return results
+            except Exception as e:
+                logger.error(f"Graph transaction rollback triggered: {e}")
+                raise
+
     def check_connection(self) -> bool:
         """Quick check to see if database is reachable."""
         try:
@@ -63,36 +79,27 @@ class GraphDB:
             return False
 
     def run_migrations(self):
-        """Creates constraints and indexes, auto-detecting Neo4j vs Memgraph syntax."""
-        labels = ["Domain", "IP", "Alias", "Email", "Profile"]
+        """Creates constraints and indexes, enforcing W3C PROV strict governance."""
+        prov_constraints = [
+            "CREATE CONSTRAINT entity_uuid IF NOT EXISTS FOR (n:Entity) REQUIRE n.uuid IS UNIQUE",
+            "CREATE CONSTRAINT activity_run_id IF NOT EXISTS FOR (n:Activity) REQUIRE n.run_id IS UNIQUE",
+            "CREATE CONSTRAINT evidence_hash IF NOT EXISTS FOR (n:Evidence) REQUIRE n.hash_sha256 IS UNIQUE",
+            "CREATE CONSTRAINT agent_name IF NOT EXISTS FOR (n:Agent) REQUIRE n.name IS UNIQUE"
+        ]
         
-        # Test Neo4j syntax for constraints
+        legacy_labels = ["Domain", "IP", "Alias", "Email", "Profile"]
+        
         try:
-            # Let's run a test constraint creation
-            self.raw_execute("CREATE CONSTRAINT unique_test_node IF NOT EXISTS FOR (t:TestNode) REQUIRE t.value IS UNIQUE")
-            self.raw_execute("DROP CONSTRAINT unique_test_node IF NOT EXISTS")
-            
-            logger.info("Database detected as Neo4j. Applying Neo4j constraint schemas...")
-            for label in labels:
+            logger.info("Applying Neo4j PROV schema constraints...")
+            for query in prov_constraints:
+                self.raw_execute(query)
+                
+            for label in legacy_labels:
                 self.raw_execute(f"CREATE CONSTRAINT unique_{label.lower()}_val IF NOT EXISTS FOR (n:{label}) REQUIRE n.value IS UNIQUE")
                 self.raw_execute(f"CREATE INDEX {label.lower()}_id_idx IF NOT EXISTS FOR (n:{label}) ON (n.id)")
-            self.raw_execute("CREATE CONSTRAINT unique_evidence_hash IF NOT EXISTS FOR (ev:Evidence) REQUIRE ev.hash IS UNIQUE")
-            self.raw_execute("CREATE INDEX evidence_id_idx IF NOT EXISTS FOR (ev:Evidence) ON (ev.id)")
-            
-        except Exception:
-            logger.info("Neo4j schema creation failed. Falling back to Memgraph constraint schemas...")
-            # Memgraph syntax: CREATE UNIQUE INDEX ON :Label(property)
-            for label in labels:
-                try:
-                    self.raw_execute(f"CREATE UNIQUE INDEX ON :{label}(value)")
-                    self.raw_execute(f"CREATE INDEX ON :{label}(id)")
-                except Exception as e:
-                    logger.debug(f"Memgraph index creation for {label} skipped (already exists?): {e}")
-            try:
-                self.raw_execute("CREATE UNIQUE INDEX ON :Evidence(hash)")
-                self.raw_execute("CREATE INDEX ON :Evidence(id)")
-            except Exception as e:
-                logger.debug(f"Memgraph index creation for Evidence skipped: {e}")
+                
+        except Exception as e:
+            logger.error(f"Failed to apply PROV Neo4j constraints: {e}")
 
     def raw_execute(self, query: str):
         """Helper to run schema queries outside of normal transaction sessions."""

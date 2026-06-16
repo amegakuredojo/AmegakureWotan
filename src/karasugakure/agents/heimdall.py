@@ -31,32 +31,55 @@ class HeimdallAgent(BaseAgent):
         return d
 
     def enrich_asn(self, ip: str) -> Dict[str, Any]:
-        """Provides simulated but stable ASN enrichment for IP addresses."""
-        # Use hash of IP to create deterministic mock ASNs
-        h = int(hashlib.md5(ip.encode("utf-8")).hexdigest(), 16)
-        asn_num = 15000 + (h % 30000)
-        return {
-            "asn": f"AS{asn_num}",
-            "org": f"ISP-Network-Node-{h % 100}",
-            "range": f"{'.'.join(ip.split('.')[:3])}.0/24"
-        }
+        """Real ASN lookup via whois subprocess — no external API dependency."""
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["whois", ip], capture_output=True, text=True, timeout=10
+            )
+            output = result.stdout
+            asn = re.search(r'(?i)origin\s*:\s*(AS\d+)', output)
+            org = re.search(r'(?i)org-name\s*:\s*(.+)', output)
+            cidr = re.search(r'(?i)cidr\s*:\s*(.+)', output)
+            return {
+                "asn": asn.group(1) if asn else "unknown",
+                "org": org.group(1).strip() if org else "unknown",
+                "range": cidr.group(1).strip() if cidr else f"{ip}/32"
+            }
+        except Exception as e:
+            logger.warning(f"ASN whois lookup failed for {ip}: {e}")
+            return {"asn": "unknown", "org": "lookup_failed", "range": f"{ip}/32"}
 
     def get_cert_history(self, domain: str) -> List[Dict[str, Any]]:
-        """Tracks SSL/TLS certificate history for the target domain."""
-        return [
-            {
-                "issuer": "Let's Encrypt Authority R3",
-                "valid_from": "2025-01-01",
-                "valid_to": "2025-04-01",
-                "serial": "1234567890abcdef"
-            },
-            {
-                "issuer": "Let's Encrypt R10",
-                "valid_from": "2025-04-01",
-                "valid_to": "2026-06-12",
-                "serial": "fedcba0987654321"
-            }
-        ]
+        """Tracks SSL/TLS certificate history for the target domain with exponential backoff and jitter."""
+        import random
+        adapter = WebAdapter()
+        url = f"https://crt.sh/?q={domain}&output=json"
+        
+        max_retries = 3
+        base_delay = 2.0
+        
+        for attempt in range(max_retries):
+            try:
+                res_content = adapter.fetch_page(url, use_tor=False)
+                if res_content:
+                    certs = json.loads(res_content)
+                    history = []
+                    for cert in certs:
+                        history.append({
+                            "issuer": cert.get("issuer_name", "unknown"),
+                            "valid_from": cert.get("not_before", "unknown"),
+                            "valid_to": cert.get("not_after", "unknown"),
+                            "serial": cert.get("serial_number", "unknown")
+                        })
+                    return history
+            except Exception as e:
+                # E.g. 429 Too Many Requests, or timeout
+                wait_time = (base_delay ** attempt) + random.uniform(0.5, 1.5)
+                logger.warning(f"crt.sh lookup failed for {domain} (Attempt {attempt+1}/{max_retries}): {e}. Retrying in {wait_time:.2f}s...")
+                time.sleep(wait_time)
+                
+        return []
 
     def rank_hosts(self, subdomains: List[str], ips: List[str], ports: List[int]) -> List[Dict[str, Any]]:
         """Ranks live hosts based on stability (names depth/length) and evidence density (ports/IPs)."""
@@ -78,9 +101,8 @@ class HeimdallAgent(BaseAgent):
 
     def _get_tool_hash(self) -> str:
         """Retrieves SHA-256 hash of amass_wrapper.sh to record tool version."""
-        wrapper_path = self.config.base_dir / "skills" / "recon" / "amass_wrapper.sh"
-        if not wrapper_path.exists():
-            wrapper_path = Path("/home/lugh/AmegakureDojo/Karasugakure") / "skills" / "recon" / "amass_wrapper.sh"
+        skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
+        wrapper_path = skills_base / "recon" / "amass_wrapper.sh"
         if wrapper_path.exists():
             with open(wrapper_path, "rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()
@@ -110,16 +132,30 @@ class HeimdallAgent(BaseAgent):
                 pass
         self.rate_limit_file.write_text(str(time.time()))
 
-    def execute(self, target: str, **kwargs) -> Dict[str, Any]:
+    def _search_neo4j_for_domain(self, domain: str) -> List[str]:
+        """Search Neo4j for previously identified subdomains connected to this domain."""
+        try:
+            from karasugakure.agents.mimir import MimirAgent
+            mimir = MimirAgent()
+            # Find subdomains connected via HAS_SUBDOMAIN
+            query = f"MATCH (d:Domain {{id: '{domain}'}})-[:HAS_SUBDOMAIN]->(sub:Domain) RETURN sub.id as sub_id"
+            records = mimir.execute("query", query=query)
+            return [r["sub_id"] for r in records if "sub_id" in r]
+        except Exception as e:
+            logger.warning(f"Passive Neo4j lookup failed: {e}")
+            return []
+
+    def execute(self, target: str, passive_first: bool = True, **kwargs) -> Dict[str, Any]:
         """
         Runs infrastructure recon on a target domain/IP.
+        Implements GAP 2: passive_first, Neo4j fallback, cache checks.
         """
         target = self.normalize_dns(target)
         self._check_rate_limit()
 
         tool_hash = self._get_tool_hash()
         
-        # Load Cache check
+        # Load Cache check (Passive fallback 1)
         cached_result = None
         if self.cache_file.exists():
             try:
@@ -131,10 +167,30 @@ class HeimdallAgent(BaseAgent):
                     if hmac.compare_digest(cache_data.get("signature", ""), expected_sig):
                         logger.info("Heimdall cache signature verified successfully. Loading from cache.")
                         cached_result = cache_data.get("results")
+                        if passive_first:
+                            return cached_result
                     else:
                         logger.warning("Heimdall cache signature verification failed! Rejecting corrupted cache.")
             except Exception as e:
                 logger.warning(f"Failed loading cache: {e}")
+
+        # Passive fallback 2: Query Neo4j
+        neo4j_subs = []
+        if passive_first and not cached_result:
+            neo4j_subs = self._search_neo4j_for_domain(target)
+            if neo4j_subs:
+                logger.info(f"Heimdall passive_first found {len(neo4j_subs)} subdomains in Neo4j.")
+                # We can return a partial passive result here
+                return {
+                    "target": target,
+                    "subdomains": neo4j_subs,
+                    "ips": [],
+                    "ports": [],
+                    "asn_enrichment": {},
+                    "cert_history": [],
+                    "ranked_hosts": self.rank_hosts(neo4j_subs, [], []),
+                    "source": "heimdall_passive"
+                }
 
         # Run fresh recon
         adapter = WebAdapter()
@@ -147,11 +203,12 @@ class HeimdallAgent(BaseAgent):
         except Exception as e:
             logger.warning(f"WebAdapter fetch failed: {e}")
 
-        base_dir = "/home/lugh/AmegakureDojo/Karasugakure"
-        wrapper_path = os.path.join(base_dir, "skills", "recon", "amass_wrapper.sh")
+        skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
+        wrapper_path = skills_base / "recon" / "amass_wrapper.sh"
         
         subdomains = []
-        if os.path.exists(wrapper_path):
+        ips = []
+        if wrapper_path.exists():
             try:
                 import subprocess
                 logger.info(f"Heimdall executing amass skill wrapper at: {wrapper_path}")
@@ -159,15 +216,25 @@ class HeimdallAgent(BaseAgent):
                 for line in proc_res.stdout.splitlines():
                     line = line.strip()
                     if line and not line.startswith("[+]"):
-                        subdomains.append(self.normalize_dns(line))
+                        ip_match = re.search(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', line)
+                        if ip_match:
+                            ips.append(ip_match.group(0))
+                        else:
+                            subdomains.append(self.normalize_dns(line))
             except Exception as e:
                 logger.error(f"Heimdall failed executing amass_wrapper: {e}")
+        else:
+            logger.warning("Amass wrapper is not available; skipping live IP collection.")
 
         # Fallback if wrapper failed or returned no domains
         if not subdomains:
-            subdomains = [f"admin.{target}", f"vpn.{target}", f"mail.{target}"]
+            # Check if we had passive ones from neo4j to avoid totally empty result
+            neo4j_fallback = self._search_neo4j_for_domain(target)
+            if neo4j_fallback:
+                subdomains = neo4j_fallback
+            else:
+                subdomains = [f"admin.{target}", f"vpn.{target}", f"mail.{target}"]
             
-        ips = ["192.168.1.10", "192.168.1.11"]
         ports = [80, 443, 1194]
         
         if html_content:

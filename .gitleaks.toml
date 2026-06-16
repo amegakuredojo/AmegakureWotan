@@ -1,0 +1,9 @@
+[allowlist]
+  description = "Karasugakure allowlist"
+  paths = ["tests/graph_export.json"]
+
+[[rules]]
+  id = "neo4j-password"
+  description = "Neo4j password hardcoded"
+  regex = '''(?i)(password\s*=\s*["'][^"']+["'])'''
+  path = '''\.py$'''

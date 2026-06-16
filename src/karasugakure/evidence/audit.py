@@ -18,6 +18,25 @@ class ForensicAuditLedger:
         self.key_path = self.keys_dir / "audit_master.key"
         self.ledger_path = config.base_dir / "evidence" / "audit_trail.log"
         self._init_master_key()
+        self._check_key_rotation()
+
+    def _check_key_rotation(self):
+        """Rotates audit master key if older than KEY_ROTATION_DAYS."""
+        KEY_ROTATION_DAYS = int(os.environ.get("KARASU_KEY_ROTATION_DAYS", "30"))
+        if not self.key_path.exists():
+            return
+        key_age_days = (time.time() - self.key_path.stat().st_mtime) / 86400
+        if key_age_days >= KEY_ROTATION_DAYS:
+            # Archive old key with timestamp
+            epoch_ts = int(time.time())
+            archive_path = self.keys_dir / f"audit_master_{epoch_ts}.key.bak"
+            self.key_path.rename(archive_path)
+            logger.warning(
+                f"Audit key rotated after {key_age_days:.1f} days. "
+                f"Old key archived to {archive_path.name}. "
+                f"New epoch key generated."
+            )
+            self._init_master_key()
 
     def _init_master_key(self):
         """Initializes secure machine-specific master secret key for log integrity signing."""
@@ -59,13 +78,21 @@ class ForensicAuditLedger:
         parameters: Dict[str, Any],
         findings: List[Dict[str, Any]],
         evidence_files: List[Dict[str, Any]],
-        proxy_route: Optional[str] = None
+        proxy_route: Optional[str] = None,
+        run_id: Optional[str] = None,
+        schema_version: Optional[str] = None,
+        operator_id: Optional[str] = None,
+        target_id: Optional[str] = None,
+        evidence_hash: Optional[str] = None,
+        hypothesis_id: Optional[str] = None,
+        phase_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Creates a signed, hash-linked block representing an agent operation.
         Includes source class, confidence summary, route, tool version, and graph snapshot hash.
         Appends it to the immutable audit ledger.
         """
+        import uuid
         config = get_config()
         timestamp = time.time()
         prev_hash = self._get_last_entry_hash()
@@ -94,34 +121,52 @@ class ForensicAuditLedger:
 
         # 3. Tool version hashes
         tool_versions = {}
-        skills_base = config.base_dir.parent / "skills"
+        skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
         if not skills_base.exists():
-            skills_base = Path("/home/lugh/AmegakureDojo/Karasugakure/skills")
-        for tool_path in [
-            skills_base / "recon" / "amass_wrapper.sh",
-            skills_base / "humint" / "sherlock_wrapper.sh",
-            skills_base / "darkweb" / "onion_spider.py"
-        ]:
-            if tool_path.exists():
-                try:
-                    with open(tool_path, "rb") as f_tool:
-                        tool_versions[tool_path.name] = hashlib.sha256(f_tool.read()).hexdigest()
-                except Exception:
-                    pass
+            logger.warning("Skills directory not found dynamically; skipping tool version hashes.")
+        else:
+            for tool_path in [
+                skills_base / "recon" / "amass_wrapper.sh",
+                skills_base / "humint" / "sherlock_wrapper.sh",
+                skills_base / "darkweb" / "onion_spider.py"
+            ]:
+                if tool_path.exists():
+                    try:
+                        with open(tool_path, "rb") as f_tool:
+                            tool_versions[tool_path.name] = hashlib.sha256(f_tool.read()).hexdigest()
+                    except Exception:
+                        pass
 
         # 4. Graph database snapshot hash
         graph_snapshot_hash = "0" * 64
         try:
             from karasugakure.graph.export import export_to_json
+            # In order to avoid infinite recursion when log_execution calls export_to_json,
+            # we check the caller action / agent_name and pass appropriate parameters.
             g_data = export_to_json()
             serialized_g = json.dumps(g_data, sort_keys=True)
             graph_snapshot_hash = hashlib.sha256(serialized_g.encode("utf-8")).hexdigest()
         except Exception:
             pass
 
+        # 5. Populate Execution Contract fields
+        run_id_val = run_id or parameters.get("run_id") or os.environ.get("KARASU_RUN_ID") or str(uuid.uuid4())
+        schema_version_val = schema_version or os.environ.get("KARASU_SCHEMA_VERSION") or "9.4"
+        operator_id_val = operator_id or os.environ.get("KARASU_OPERATOR_ID") or "operator-default"
+        target_id_val = target_id or parameters.get("target") or parameters.get("target_id") or os.environ.get("KARASU_TARGET_ID") or "target-default"
+        
+        if not evidence_hash:
+            serialized_findings = json.dumps(findings, sort_keys=True)
+            evidence_hash_val = hashlib.sha256(serialized_findings.encode("utf-8")).hexdigest()
+        else:
+            evidence_hash_val = evidence_hash
+
+        hypothesis_id_val = hypothesis_id or os.environ.get("KARASU_HYPOTHESIS_ID") or f"hyp-{uuid.uuid4()}"
+        phase_id_val = phase_id or os.environ.get("KARASU_PHASE_ID") or action or "phase-default"
+
         # Build core ledger payload
         payload = {
-            "version": "1.1",
+            "version": "1.2",  # Upgraded schema version of audit trail
             "timestamp": timestamp,
             "agent": agent_name,
             "source_class": source_class,
@@ -133,7 +178,16 @@ class ForensicAuditLedger:
             "network_route": proxy_route or config.opsec.tor_proxy,
             "tool_versions": tool_versions,
             "graph_snapshot_hash": graph_snapshot_hash,
-            "previous_record_hash": prev_hash
+            "previous_record_hash": prev_hash,
+            
+            # Execution Contract fields
+            "run_id": run_id_val,
+            "schema_version": schema_version_val,
+            "operator_id": operator_id_val,
+            "target_id": target_id_val,
+            "evidence_hash": evidence_hash_val,
+            "hypothesis_id": hypothesis_id_val,
+            "phase_id": phase_id_val
         }
         
         # Serialize payloads strictly to prevent canonicalization discrepancies

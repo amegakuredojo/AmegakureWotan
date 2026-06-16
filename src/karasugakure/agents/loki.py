@@ -3,6 +3,7 @@ import random
 import os
 import shutil
 import tempfile
+from pathlib import Path
 from typing import Any, Dict, List
 from karasugakure.agents import BaseAgent
 from karasugakure.policy.opsec import enforce_opsec_policy, run_isolated_process
@@ -63,8 +64,8 @@ class LokiAgent(BaseAgent):
             non_matches = []
             
             # Execute sherlock_wrapper.sh
-            base_dir = "/home/lugh/AmegakureDojo/Karasugakure"
-            wrapper_path = os.path.join(base_dir, "skills", "humint", "sherlock_wrapper.sh")
+            skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
+            wrapper_path = skills_base / "humint" / "sherlock_wrapper.sh"
             
             profiles = []
             found_platforms = set()
@@ -73,7 +74,7 @@ class LokiAgent(BaseAgent):
             subprocess_env = os.environ.copy()
             subprocess_env["USER_AGENT"] = rotated_ua
 
-            if os.path.exists(wrapper_path):
+            if wrapper_path.exists():
                 try:
                     logger.info(f"Loki executing sherlock skill wrapper at: {wrapper_path}")
                     proc_res = subprocess.run([wrapper_path, target], capture_output=True, text=True, check=True, env=subprocess_env)
