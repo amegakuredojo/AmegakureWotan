@@ -55,6 +55,17 @@ class ForensicAuditLedger:
 
     def _get_last_entry_hash(self) -> str:
         """Retrieves the hash of the last entry in the ledger to maintain hash-chain links."""
+        try:
+            from karasugakure.graph.db import get_db
+            db = get_db()
+            if db.check_connection():
+                query = "MATCH (r:AuditRecord) RETURN r.record_hash AS last_hash ORDER BY r.timestamp DESC LIMIT 1"
+                res = db.execute_query(query)
+                if res and res[0].get("last_hash"):
+                    return res[0]["last_hash"]
+        except Exception as e:
+            logger.warning(f"Failed to query last ledger record hash from Neo4j: {e}")
+
         if not self.ledger_path.exists() or self.ledger_path.stat().st_size == 0:
             return "0" * 64
             
@@ -67,7 +78,7 @@ class ForensicAuditLedger:
                         record = json.loads(last_line)
                         return record.get("record_hash", "0" * 64)
         except Exception as e:
-            logger.warning(f"Failed to trace hash-chain from ledger: {e}")
+            logger.warning(f"Failed to trace hash-chain from ledger file: {e}")
         return "0" * 64
 
 
@@ -161,7 +172,7 @@ class ForensicAuditLedger:
         else:
             evidence_hash_val = evidence_hash
 
-        hypothesis_id_val = hypothesis_id or os.environ.get("KARASU_HYPOTHESIS_ID") or f"hyp-{uuid.uuid4()}"
+        hypothesis_id_val = hypothesis_id or os.environ.get("KARASU_HYPOTHESIS_ID") or f"hyp-{run_id_val}"
         phase_id_val = phase_id or os.environ.get("KARASU_PHASE_ID") or action or "phase-default"
 
         # Build core ledger payload
@@ -212,6 +223,46 @@ class ForensicAuditLedger:
         # Append to audit ledger (write-only append)
         with open(self.ledger_path, "a") as f:
             f.write(json.dumps(record) + "\n")
+
+        # Dual Ingest: Persist to Neo4j as AuditRecord node and edge
+        try:
+            from karasugakure.graph.db import get_db
+            db = get_db()
+            if db.check_connection():
+                cypher_node = """
+                MERGE (r:AuditRecord {record_hash: $record_hash})
+                SET r.payload = $payload,
+                    r.signature = $signature,
+                    r.pgp_signature = $pgp_signature,
+                    r.previous_record_hash = $previous_record_hash,
+                    r.timestamp = $timestamp,
+                    r.agent = $agent,
+                    r.action = $action
+                """
+                db.execute_query(cypher_node, {
+                    "record_hash": record["record_hash"],
+                    "payload": serialized_payload,
+                    "signature": record["signature"],
+                    "pgp_signature": record.get("pgp_signature"),
+                    "previous_record_hash": prev_hash,
+                    "timestamp": timestamp,
+                    "agent": agent_name,
+                    "action": action
+                })
+                
+                if prev_hash != "0" * 64:
+                    cypher_edge = """
+                    MATCH (prev:AuditRecord {record_hash: $prev_hash})
+                    MATCH (curr:AuditRecord {record_hash: $curr_hash})
+                    MERGE (curr)-[:PREV_RECORD]->(prev)
+                    """
+                    db.execute_query(cypher_edge, {
+                        "prev_hash": prev_hash,
+                        "curr_hash": record["record_hash"]
+                    })
+                logger.info(f"AuditRecord node persisted to Neo4j (Hash: {record['record_hash'][:8]})")
+        except Exception as e:
+            logger.warning(f"Failed to write AuditRecord to Neo4j: {e}")
             
         logger.info(f"Forensic Audit record logged for {agent_name} -> {action} (Hash: {record['record_hash'][:8]})")
         return record
@@ -249,13 +300,93 @@ class ForensicAuditLedger:
             "corruptions": []
         }
 
-        if not self.ledger_path.exists():
-            # Write empty diff summary
-            with open(diff_path, "w") as f_diff:
-                json.dump(diff_summary, f_diff, indent=2)
-            return True # Empty ledger is technically integral
-            
+        # 1. Verify Neo4j Graph-Based Ledger
+        db_records = []
+        db_connected = False
+        try:
+            from karasugakure.graph.db import get_db
+            db = get_db()
+            if db.check_connection():
+                db_connected = True
+                query = """
+                MATCH (r:AuditRecord)
+                RETURN r.record_hash AS record_hash,
+                       r.signature AS signature,
+                       r.pgp_signature AS pgp_signature,
+                       r.previous_record_hash AS previous_record_hash,
+                       r.timestamp AS timestamp,
+                       r.payload AS payload,
+                       r.agent AS agent,
+                       r.action AS action
+                ORDER BY r.timestamp ASC
+                """
+                db_records = db.execute_query(query)
+        except Exception as e:
+            logger.warning(f"Could not connect to Neo4j for ledger verification: {e}")
+
         master_key = self._get_master_key()
+
+        if db_connected:
+            expected_prev_hash = "0" * 64
+            idx = 0
+            for r in db_records:
+                idx += 1
+                rec_hash = r.get("record_hash")
+                sig = r.get("signature")
+                prev_hash = r.get("previous_record_hash")
+                payload_str = r.get("payload")
+                
+                if not rec_hash or not sig or not payload_str:
+                    diff_summary["is_corrupt"] = True
+                    diff_summary["corruptions"].append({
+                        "database_index": idx,
+                        "reason": "Graph record structural fields missing in Neo4j"
+                    })
+                    continue
+                
+                # Verify prev hash link
+                if prev_hash != expected_prev_hash:
+                    diff_summary["is_corrupt"] = True
+                    diff_summary["corruptions"].append({
+                        "database_index": idx,
+                        "reason": "Graph broken hash-chain link in Neo4j",
+                        "expected_prev_hash": expected_prev_hash,
+                        "actual_prev_hash": prev_hash
+                    })
+
+                # Verify HMAC signature
+                computed_sig = hmac.new(master_key, payload_str.encode("utf-8"), hashlib.sha256).hexdigest()
+                if not hmac.compare_digest(sig, computed_sig):
+                    diff_summary["is_corrupt"] = True
+                    diff_summary["corruptions"].append({
+                        "database_index": idx,
+                        "reason": "Graph HMAC signature mismatch in Neo4j",
+                        "expected_signature": computed_sig,
+                        "actual_signature": sig
+                    })
+
+                # Verify record hash
+                computed_hash = hashlib.sha256((payload_str + sig).encode("utf-8")).hexdigest()
+                if computed_hash != rec_hash:
+                    diff_summary["is_corrupt"] = True
+                    diff_summary["corruptions"].append({
+                        "database_index": idx,
+                        "reason": "Graph record hash corruption in Neo4j",
+                        "expected_hash": computed_hash,
+                        "actual_hash": rec_hash
+                    })
+                
+                expected_prev_hash = rec_hash
+            
+            logger.info(f"Verified {idx} graph-based AuditRecord nodes in Neo4j.")
+
+        # 2. Verify File-Based Ledger (always, as dual-layer validation and local fallback)
+        if not self.ledger_path.exists():
+            if not db_connected or not db_records:
+                with open(diff_path, "w") as f_diff:
+                    json.dump(diff_summary, f_diff, indent=2)
+                return True # Empty ledger is technically integral
+            
         expected_prev_hash = "0" * 64
         line_num = 0
         
@@ -276,7 +407,7 @@ class ForensicAuditLedger:
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({
                             "line": line_num,
-                            "reason": "Corrupt record structural fields missing",
+                            "reason": "Corrupt file record structural fields missing",
                             "expected_fields": ["payload", "signature", "record_hash"]
                         })
                         continue
@@ -287,7 +418,7 @@ class ForensicAuditLedger:
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({
                             "line": line_num,
-                            "reason": "Broken hash-chain link",
+                            "reason": "Broken file hash-chain link",
                             "expected_prev_hash": expected_prev_hash,
                             "actual_prev_hash": actual_prev_hash
                         })
@@ -299,7 +430,7 @@ class ForensicAuditLedger:
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({
                             "line": line_num,
-                            "reason": "HMAC signature mismatch",
+                            "reason": "File HMAC signature mismatch",
                             "expected_signature": computed_sig,
                             "actual_signature": sig
                         })
@@ -310,13 +441,13 @@ class ForensicAuditLedger:
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({
                             "line": line_num,
-                            "reason": "Record hash corruption",
+                            "reason": "File record hash corruption",
                             "expected_hash": computed_hash,
                             "actual_hash": rec_hash
                         })
                         
                     expected_prev_hash = rec_hash
-                    diff_summary["checked_records_count"] = line_num
+                    diff_summary["checked_records_count"] = max(line_num, diff_summary["checked_records_count"])
 
             # Write diff summary for operator review
             with open(diff_path, "w") as f_diff:
@@ -326,7 +457,7 @@ class ForensicAuditLedger:
                 logger.error(f"Forensic Audit Ledger Integrity check failed! Corruptions: {diff_summary['corruptions']}")
                 return False
 
-            logger.info(f"Forensic Audit Ledger verified successfully. Checked {line_num} records. Integrity: OK.")
+            logger.info(f"Forensic Audit Ledger verified successfully. Checked file lines: {line_num}. Integrity: OK.")
             return True
         except Exception as e:
             logger.error(f"Error checking audit ledger integrity: {e}")

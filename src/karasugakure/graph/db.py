@@ -84,7 +84,8 @@ class GraphDB:
             "CREATE CONSTRAINT entity_uuid IF NOT EXISTS FOR (n:Entity) REQUIRE n.uuid IS UNIQUE",
             "CREATE CONSTRAINT activity_run_id IF NOT EXISTS FOR (n:Activity) REQUIRE n.run_id IS UNIQUE",
             "CREATE CONSTRAINT evidence_hash IF NOT EXISTS FOR (n:Evidence) REQUIRE n.hash_sha256 IS UNIQUE",
-            "CREATE CONSTRAINT agent_name IF NOT EXISTS FOR (n:Agent) REQUIRE n.name IS UNIQUE"
+            "CREATE CONSTRAINT agent_name IF NOT EXISTS FOR (n:Agent) REQUIRE n.name IS UNIQUE",
+            "CREATE CONSTRAINT audit_record_hash IF NOT EXISTS FOR (n:AuditRecord) REQUIRE n.record_hash IS UNIQUE"
         ]
         
         legacy_labels = ["Domain", "IP", "Alias", "Email", "Profile"]

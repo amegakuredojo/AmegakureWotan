@@ -913,5 +913,12 @@ def kaisen_promote():
 
     console.print("=======================================\n")
 
+@app.command()
+def tui():
+    """Launch the interactive Karasugakure Terminal User Interface."""
+    from karasugakure.tui import KarasuTuiApp
+    tui_app = KarasuTuiApp()
+    tui_app.run()
+
 if __name__ == "__main__":
     app()

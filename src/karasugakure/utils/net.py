@@ -44,7 +44,7 @@ def make_tor_request(
     and routes traffic via Tor SOCKS5 proxy if specified by configuration or forced.
     Enforces route validation before dispatch.
     """
-    from karasugakure.policy.opsec import verify_network_route
+    from karasugakure.policy.opsec import verify_network_route, get_active_proxies
     verify_network_route(url, agent_name=agent_name, force_tor=force_tor)
 
     config = get_config()
@@ -52,12 +52,21 @@ def make_tor_request(
     
     # Check if Tor proxy is enabled in config or forced (e.g. Hel agent)
     if force_tor or config.opsec.tor_proxy:
-        proxy_url = config.opsec.tor_proxy or "socks5h://127.0.0.1:9050"
-        proxies = {
-            "http": proxy_url,
-            "https": proxy_url
-        }
-        logger.debug(f"Routing request through Tor proxy: {proxy_url}")
+        active_proxies = get_active_proxies()
+        if active_proxies:
+            proxy_url = random.choice(active_proxies)
+            proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
+            logger.debug(f"Routing request through rotated Tor proxy: {proxy_url}")
+        else:
+            proxy_url = config.opsec.tor_proxy or "socks5h://127.0.0.1:9050"
+            proxies = {
+                "http": proxy_url,
+                "https": proxy_url
+            }
+            logger.warning(f"No active proxies in pool. Falling back to default Tor proxy: {proxy_url}")
         
     req_headers = headers or {}
     if config.opsec.user_agent_rotation and "User-Agent" not in req_headers:

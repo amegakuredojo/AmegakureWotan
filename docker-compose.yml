@@ -8,7 +8,7 @@ networks:
   # Red interna: Solo intercomunicación entre servicios, sin salida directa a internet
   internal:
     driver: bridge
-    internal: true
+    internal: false
     ipam:
       config:
         - subnet: 172.28.0.0/24
@@ -41,8 +41,8 @@ services:
     networks:
       internal:
         ipv4_address: 172.28.0.10
-    expose:
-      - "7687"   # Bolt
+    ports:
+      - "7687:7687"
     environment:
       NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
       NEO4J_dbms_memory_heap_initial__size: "512m"
@@ -71,8 +71,8 @@ services:
       internal:
         ipv4_address: 172.28.0.20
       egress: {} # Único con salida a Internet
-    expose:
-      - "9150"   # Puerto SOCKS5 expuesto únicamente en la red interna
+    ports:
+      - "9050:9150"
     cap_drop:
       - ALL
     cap_add:

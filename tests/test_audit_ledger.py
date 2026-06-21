@@ -9,6 +9,10 @@ def mock_config_base_dir(tmp_path, monkeypatch):
     config = get_config()
     monkeypatch.setattr(config, "base_dir", tmp_path)
     config.init_dirs()
+    # Mock GraphDB check_connection to False to isolate tests from the live database
+    from karasugakure.graph.db import get_db
+    db = get_db()
+    monkeypatch.setattr(db, "check_connection", lambda: False)
 
 def test_tamper_detection():
     """Si se modifica cualquier byte del ledger, verify_ledger_integrity() debe retornar False."""

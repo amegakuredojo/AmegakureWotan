@@ -16,6 +16,7 @@ class OpsecSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OPSEC_", case_sensitive=False)
     
     tor_proxy: str = "socks5h://127.0.0.1:9050"
+    tor_proxy_pool: str = "socks5h://127.0.0.1:9050"
     user_agent_rotation: bool = True
     tls_fingerprint_policy: str = "random"
 

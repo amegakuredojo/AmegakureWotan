@@ -1,5 +1,5 @@
 # ─── STAGE 1: BUILDER ───────────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 # Instalar dependencias del sistema necesarias para compilar wheels
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
     libssl-dev \
+    libxml2-dev \
+    libxslt-dev \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -16,7 +18,8 @@ WORKDIR /build
 RUN git clone --branch v5.1.2 --depth 1 https://github.com/lanmaster53/recon-ng.git /opt/recon-ng \
     && git clone --branch 4.4.0 --depth 1 https://github.com/laramies/theHarvester.git /opt/theHarvester \
     && sed -i 's/aiohttp==3.8.5/aiohttp>=3.9.0/g' /opt/theHarvester/requirements/base.txt \
-    && sed -i 's/uvloop==0.17.0/uvloop>=0.19.0/g' /opt/theHarvester/requirements/base.txt
+    && sed -i 's/uvloop==0.17.0/uvloop>=0.19.0/g' /opt/theHarvester/requirements/base.txt \
+    && sed -i 's/lxml==4.9.3/lxml>=5.2.0/g' /opt/theHarvester/requirements/base.txt
 
 # Copiar manifests del proyecto
 COPY pyproject.toml ./
@@ -32,7 +35,7 @@ RUN pip install --upgrade pip --no-cache-dir \
     && pip install --prefix=/install --no-cache-dir --upgrade websockets
 
 # ─── STAGE 2: RUNTIME ───────────────────────────────────────────────────────
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.13-slim-bookworm AS runtime
 
 # Metadatos de imagen — el IMAGE_BUILD_HASH se inyecta en build time
 # para que el ForensicAuditLedger lo registre en el primer bloque
@@ -121,4 +124,4 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["--help"]
+CMD []

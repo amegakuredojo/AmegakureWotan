@@ -50,6 +50,29 @@ def enforce_opsec_policy(agent_name: str, config=None):
         
         logger.info(f"OPSEC check passed for '{agent_name}': Tor proxy is active.")
 
+def get_active_proxies() -> list[str]:
+    """Returns a list of reachable proxies from the configured pool."""
+    from karasugakure.config import get_config
+    config = get_config()
+    proxy_pool_str = os.environ.get("OPSEC_TOR_PROXY_POOL") or getattr(config.opsec, "tor_proxy_pool", None) or config.opsec.tor_proxy
+    if not proxy_pool_str:
+        return []
+    
+    pool = [p.strip() for p in proxy_pool_str.split(",") if p.strip()]
+    active = []
+    for proxy_url in pool:
+        tor_host = "127.0.0.1"
+        tor_port = 9050
+        try:
+            parts = proxy_url.split("://")[-1].split(":")
+            tor_host = parts[0]
+            tor_port = int(parts[1])
+        except Exception:
+            pass
+        if check_tor_socks_proxy(tor_host, tor_port):
+            active.append(proxy_url)
+    return active
+
 def verify_network_route(url: str, agent_name: Optional[str] = None, force_tor: bool = False):
     """
     Enforces route checks before every network action.
@@ -64,31 +87,19 @@ def verify_network_route(url: str, agent_name: Optional[str] = None, force_tor: 
     
     # 1. Enforce Tor routing checks for onion or forced tor or sensitive agents
     if force_tor or is_onion or is_sensitive:
-        if not config.opsec.tor_proxy:
+        active_proxies = get_active_proxies()
+        if not active_proxies:
             raise OPSECViolationException(
-                f"OPSEC VIOLATION: Request to '{url}' requires Tor proxy, but config.opsec.tor_proxy is empty."
-            )
-            
-        tor_host = "127.0.0.1"
-        tor_port = 9050
-        try:
-            parts = config.opsec.tor_proxy.split("://")[-1].split(":")
-            tor_host = parts[0]
-            tor_port = int(parts[1])
-        except Exception:
-            pass
-            
-        if not check_tor_socks_proxy(tor_host, tor_port):
-            raise OPSECViolationException(
-                f"OPSEC VIOLATION: Tor SOCKS proxy is offline ({tor_host}:{tor_port}). Blocked request to '{url}'."
+                f"OPSEC VIOLATION: Request to '{url}' requires Tor proxy, but all proxies in the pool are offline."
             )
 
     # 2. Explicit clear-web direct access denial for sensitive agents
     if is_sensitive and not force_tor and not is_onion:
         # Sensitive agents are blocked from clear-web direct routing without Tor
-        if not config.opsec.tor_proxy:
+        active_proxies = get_active_proxies()
+        if not active_proxies:
             raise OPSECViolationException(
-                f"OPSEC VIOLATION: Sensitive agent '{agent_name}' is explicitly denied direct clear-web access."
+                f"OPSEC VIOLATION: Sensitive agent '{agent_name}' is explicitly denied direct clear-web access, and no proxies are available."
             )
 
 def run_isolated_process(func: Callable, *args, **kwargs) -> Any:

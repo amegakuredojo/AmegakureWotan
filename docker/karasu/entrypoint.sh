@@ -112,7 +112,7 @@ echo ""
 
 # ── 8. EJECUTAR COMANDO SOLICITADO ───────────────────────────────────────────
 if [ "$#" -eq 0 ]; then
-    exec python3 -m karasugakure.cli --help
+    exec python3 -m karasugakure.cli tui
 elif [ "$1" = "pytest" ] || [ "$1" = "bash" ] || [ "$1" = "sh" ] || [ "$1" = "ls" ]; then
     exec "$@"
 else
