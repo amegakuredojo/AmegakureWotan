@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: searxng-redis
+    command: redis-server --save "" --appendonly no
+    networks: [searxng]
+    restart: unless-stopped
+
+  tor:
+    image: dperson/torproxy
+    container_name: searxng-tor
+    networks: [searxng]
+    restart: unless-stopped
+    # SOCKS5 en :9050, expuesto solo dentro de la red interna docker (no publicado al host)
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    depends_on:
+      - redis
+      - tor
+    ports:
+      # SOLO localhost. Nunca publiques 0.0.0.0:8080 sin reverse-proxy + auth delante.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080/
+      - UWSGI_WORKERS=4
+      - UWSGI_THREADS=4
+    networks: [searxng]
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run
+
+networks:
+  searxng:
+    driver: bridge

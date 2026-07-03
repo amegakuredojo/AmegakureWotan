@@ -17,6 +17,7 @@ from karasugakure.agents.skadi import SkadiAgent
 from karasugakure.evidence.audit import ForensicAuditLedger
 from karasugakure.config import get_config
 from karasugakure.graph.db import get_db
+from karasugakure.utils.sanitizer import OSINTSanitizer
 
 logger = logging.getLogger("karasugakure.agents.odin")
 
@@ -104,7 +105,7 @@ def recon_node(state: PipelineState) -> PipelineState:
         
     try:
         heimdall = HeimdallAgent()
-        results = heimdall.execute(state["target"])
+        results = OSINTSanitizer.sanitize_payload(heimdall.execute(state["target"]))
         state["findings"].append({
             "source": "heimdall",
             "type": "recon_results",
@@ -148,7 +149,7 @@ def humint_node(state: PipelineState) -> PipelineState:
         
     try:
         loki = LokiAgent()
-        results = loki.execute(state["target"])
+        results = OSINTSanitizer.sanitize_payload(loki.execute(state["target"]))
         state["findings"].append({
             "source": "loki",
             "type": "humint_results",
@@ -192,7 +193,7 @@ def darkweb_node(state: PipelineState) -> PipelineState:
         
     try:
         hel = HelAgent()
-        results = hel.execute(state["target"])
+        results = OSINTSanitizer.sanitize_payload(hel.execute(state["target"]))
         state["findings"].append({
             "source": "hel",
             "type": "darkweb_results",

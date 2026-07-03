@@ -52,6 +52,9 @@ def make_tor_request(
     
     # Check if Tor proxy is enabled in config or forced (e.g. Hel agent)
     if force_tor or config.opsec.tor_proxy:
+        from karasugakure.daemons.isolator import isolator
+        isolator.rotate_identity() # OPSEC: Rotate circuit per-request
+        
         active_proxies = get_active_proxies()
         if active_proxies:
             proxy_url = random.choice(active_proxies)

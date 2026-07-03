@@ -1,55 +1,114 @@
-# Karasugakure — CLI-only OSINT Orchestration Harness
+# 🦅 Karasugakure (烏隠れ) — Advanced OSINT Forensic Graph Harness
 
-Karasugakure is a structured, CLI-only OSINT framework built for tactical intelligence collection and relational link analysis. It operates on a graph-based persistence layer using Neo4j/Memgraph.
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)
+![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)
+![Database](https://img.shields.io/badge/GraphDB-K%C3%B9zu-yellow.svg)
 
-## Pantheon of Agents
+Karasugakure is a highly-secure, modular, and containerized **Open Source Intelligence (OSINT)** framework built for the shadows of the Amegakure Dojo. It executes stealthy automated intelligence gathering, correlates complex cyber-entities using an embedded **Kùzu Graph Database**, and maintains absolute cryptographic integrity of all findings through its **Forensic Audit Ledger**.
 
-- **Odin**: Strategic orchestrator and threat modeler.
-- **Heimdall**: Infrastructure and surface reconnaissance.
-- **Loki**: HUMINT, digital footprints, and profile scans.
-- **Hel**: Deep/darkweb onion searches (Strictly routed via Tor SOCKS5).
-- **Mimir**: Relational graph database memory repository.
-- **Tyr**: Intelligence validation scoring engine using the NATO evaluation matrix.
-- **Skadi**: Evidence preservation vault signing.
-- **Fenrir**: Graph link correlation engine.
-- **Norn**: Natural language search intent compiler to Cypher queries.
+Designed with paramount **OPSEC** in mind, it routes all external reconnaissance through a self-healing **Tor SOCKS5 Proxy Network**, ensuring operator anonymity while investigating hostile targets, dark web assets, and corporate infrastructure.
 
-## Getting Started
+---
 
-1. **Launch Database and Tor Proxy**:
-   ```bash
-   docker compose up -d
-   ```
+## 🕷️ Architecture & OPSEC
 
-2. **Initialize Environment**:
-   ```bash
-   .venv/bin/karasu init
-   ```
+- **Isolated Docker Runtime:** The entire pipeline executes inside a locked-down, network-restricted `docker-compose` topology.
+- **Strict OPSEC Networking:** The reconnaissance container is disconnected from the clearnet. It bridges EXCLUSIVELY to a Tor proxy sidecar container. A "Kill Switch" guarantees no traffic escapes unanonymized.
+- **Embedded Graph DB (Kùzu):** Intelligence nodes (Domains, IPs, Emails, Personas) are structured locally using Kùzu, allowing lightning-fast relational queries entirely offline.
+- **Forensic Audit Ledger:** Every agent action and DB mutation is cryptographically hashed (HMAC-SHA256) into a tamper-proof audit trail for legally verifiable chain-of-custody reporting.
+- **Agent Mesh Topology:**
+  - `Heimdall`: Digital Reconnaissance & Perimeter Mapping.
+  - `Huginn`: Corporate Entity & HUMINT mapping.
+  - `Tyr`: Information verification & NATO intelligence scoring.
+  - `Hel`: Dark Web / Deep Web intel indexing.
+  - `Odin`: Workflow orchestrator and central brain.
+  - `Mimir`: Memory retrieval and contextual search.
 
-3. **Run Scanning Tasks**:
-   * Surface Recon:
-     ```bash
-     .venv/bin/karasu recon target.com
-     ```
-   * Digital Footprint:
-     ```bash
-     .venv/bin/karasu humint username
-     ```
-   * Darkweb Lookup:
-     ```bash
-     .venv/bin/karasu darkweb "leak_db_query"
-     ```
+---
 
-4. **Run Relational Correlation (Fenrir)**:
-   ```bash
-   .venv/bin/karasu correlate
-   ```
+## ⚡ Installation (Zero to OSINT in 60s)
 
-5. **Generate Dossier Report**:
-   ```bash
-   .venv/bin/karasu report
-   ```
+Karasugakure includes a seamless bootstrap installer that builds the secure Docker architecture and injects a global command wrapper into your system.
 
-## Pi Agent Integration
+### Prerequisites:
+- `git`
+- `docker`
+- `docker compose`
 
-This project includes a Pi extension located in `.pi/extensions/karasugakure.ts`. When you run Pi in this directory, the Karasugakure tools will be injected into Pi's runtime, enabling the agent to execute recon, humint, and graph query command-line tools natively!
+### Setup:
+```bash
+git clone https://github.com/amegakuredojo/Karasugakure.git
+cd Karasugakure
+./install.sh
+```
+
+> **Note:** The `install.sh` script will build the hardened containers and create a global wrapper at `~/.local/bin/karasu`. Ensure `~/.local/bin` is in your `$PATH`.
+
+---
+
+## ⚔️ Usage & Commands
+
+Once installed, Karasugakure acts as a native CLI tool. You do not need to be in the project folder to run it.
+
+### Core Orchestration
+Launch a full automated reconnaissance cycle against a target (Domain, IP, Persona):
+```bash
+karasu orchestrate target.com
+```
+
+### Graph Visualization
+View the correlated OSINT footprint in a beautiful ASCII tree format directly in your terminal (No web ports exposed for strict OPSEC):
+```bash
+karasu graph view
+```
+
+### Forensic Operations
+Verify the cryptographic integrity of your case ledger:
+```bash
+karasu audit verify
+```
+
+Export a sanitized JSON intelligence dossier:
+```bash
+karasu export
+```
+
+Generate a Markdown dossier report:
+```bash
+karasu report --format markdown
+```
+
+### Dark Web Ops
+Search indexed onion endpoints safely through the internal Tor proxy:
+```bash
+karasu darkweb "search_query"
+```
+
+### Interactive Dashboard (TUI)
+Launch the Textual User Interface for immersive investigation directly in the terminal:
+```bash
+karasu tui
+```
+
+---
+
+## 🧪 Testing & CI
+
+Karasugakure features a robust test suite that validates OPSEC fail-safes, graph database consistency, NATO scoring algorithms, and audit tamper-detection.
+
+To run the full suite (Smoke Tests + Pytest):
+```bash
+karasu test
+# or if running from source:
+make test
+```
+
+---
+
+## 🛡️ License & Disclaimer
+
+This software is for authorized intelligence gathering, digital forensics, and security research only. Operators are solely responsible for compliance with their local legislation and international laws.
+
+*Property of Amegakure Dojo.*

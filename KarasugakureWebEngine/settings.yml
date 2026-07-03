@@ -1,0 +1,77 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "karasugakure-osint"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false          # no expongas /stats
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json          # OBLIGATORIO para el cliente CLI/LangChain — sin esto, /search?format=json devuelve 403
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"        # el binding real a localhost lo hace docker-compose, no esto
+  secret_key: "__SECRET_KEY__"   # placeholder, inyectado por deploy.sh — nunca lo commitees en claro
+  base_url: false
+  method: "POST"
+  limiter: true                  # rate-limit + bot-detection nativos, requiere redis:
+  image_proxy: false
+
+redis:
+  url: redis://redis:6379/0
+
+outgoing:
+  request_timeout: 6.0
+  max_request_timeout: 15.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+  retries: 3                     # cada retry reintenta con proxy/source_ip distinto de la lista de abajo
+  useragent_suffix: ""           # deliberadamente vacío: un contacto identificable rompe el OpSec real
+  proxies:
+    all://:
+      - socks5h://tor:9050       # todo el tráfico saliente (a Google/Bing/etc.) cruza por Tor
+
+# --- Engines activos --------------------------------------------------------
+# Nota: los engines que requieren api_key nacen con disabled:true por defecto
+# en SearXNG. Hay que declarar la key Y forzar disabled:false explícitamente.
+
+engines:
+  - name: google
+    engine: google
+    shortcut: go
+    disabled: false
+
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gos
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: false
+
+  - name: brave
+    engine: brave
+    shortcut: br
+    api_key: "__BRAVE_API_KEY__"
+    disabled: false
+
+  - name: github
+    engine: github
+    shortcut: gh
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false

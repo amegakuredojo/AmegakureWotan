@@ -9,23 +9,62 @@ from karasugakure.graph.db import get_db
 def export_all_nodes() -> List[Dict[str, Any]]:
     """Retrieves all nodes from the graph."""
     db = get_db()
-    query = "MATCH (n) RETURN labels(n) as labels, properties(n) as properties"
-    return db.execute_query(query)
+    node_tables = [t for t in db._known_tables if t not in (
+        "WAS_ASSOCIATED_WITH", "WAS_GENERATED_BY", "WAS_ATTRIBUTED_TO", 
+        "WAS_DERIVED_FROM", "USED", "RESOLVES_TO", "HAS_SUBDOMAIN", 
+        "HAS_PROFILE", "HAS_EMAIL", "CORRELATED_WITH"
+    )]
+    
+    nodes = []
+    for table in node_tables:
+        try:
+            records = db.execute_query(f"MATCH (n:{table}) RETURN n")
+            for rec in records:
+                n_dict = rec.get("n")
+                if isinstance(n_dict, dict):
+                    props = {k: v for k, v in n_dict.items() if not k.startswith("_")}
+                    nodes.append({
+                        "labels": [n_dict.get("_label", table)],
+                        "properties": props
+                    })
+        except Exception:
+            pass
+    return nodes
 
 def export_all_relationships() -> List[Dict[str, Any]]:
     """Retrieves all relationships from the graph."""
     db = get_db()
-    query = """
-    MATCH (a)-[r]->(b)
-    RETURN 
-        labels(a) as source_labels, 
-        a.value as source_value, 
-        type(r) as relationship, 
-        properties(r) as properties,
-        labels(b) as target_labels,
-        b.value as target_value
-    """
-    return db.execute_query(query)
+    rel_types = [
+        "WAS_ASSOCIATED_WITH", "WAS_GENERATED_BY", "WAS_ATTRIBUTED_TO", 
+        "WAS_DERIVED_FROM", "USED", "RESOLVES_TO", "HAS_SUBDOMAIN", 
+        "HAS_PROFILE", "HAS_EMAIL", "CORRELATED_WITH"
+    ]
+    
+    edges = []
+    for rel in rel_types:
+        if rel.upper() not in db._known_tables:
+            continue
+        try:
+            records = db.execute_query(f"MATCH (a)-[r:{rel}]->(b) RETURN a, r, b")
+            for rec in records:
+                a_dict = rec.get("a")
+                b_dict = rec.get("b")
+                r_dict = rec.get("r")
+                if isinstance(a_dict, dict) and isinstance(b_dict, dict):
+                    props = {}
+                    if isinstance(r_dict, dict):
+                        props = {k: v for k, v in r_dict.items() if not k.startswith("_")}
+                    edges.append({
+                        "source_labels": [a_dict.get("_label", "Entity")],
+                        "source_value": a_dict.get("value", a_dict.get("id")),
+                        "relationship": rel,
+                        "properties": props,
+                        "target_labels": [b_dict.get("_label", "Entity")],
+                        "target_value": b_dict.get("value", b_dict.get("id"))
+                    })
+        except Exception:
+            pass
+    return edges
 
 def export_to_json(
     run_id: str = None,

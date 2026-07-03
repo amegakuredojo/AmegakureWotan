@@ -5,40 +5,9 @@ echo "╔═══════════════════════�
 echo "║     KARASUGAKURE — OSINT HARNESS BOOTSTRAP   ║"
 echo "╚══════════════════════════════════════════════╝"
 
-# ── 1. VERIFICACIÓN DE SECRETOS REQUERIDOS ──────────────────────────────────
-if [ -z "${NEO4J_PASSWORD:-}" ]; then
-    echo "[FATAL] NEO4J_PASSWORD not set. Cannot start without database credentials."
-    echo "        Set it in your .env file or via Docker secrets."
-    exit 1
-fi
+# ── 1. BOOT INFO ─────────────────────────────────────────────────────────────
+echo "[BOOT] Starting Karasugakure Core with Kùzu embedded GraphDB..."
 
-# ── 2. ESPERAR A QUE NEO4J ESTÉ LISTO ───────────────────────────────────────
-echo "[BOOT] Waiting for Neo4j to be ready at ${NEO4J_URI:-bolt://neo4j:7687}..."
-MAX_RETRIES=30
-COUNT=0
-until python3 -c "
-from neo4j import GraphDatabase
-import os, sys
-try:
-    d = GraphDatabase.driver(
-        os.environ.get('NEO4J_URI','bolt://neo4j:7687'),
-        auth=('neo4j', os.environ['NEO4J_PASSWORD'])
-    )
-    d.verify_connectivity()
-    d.close()
-    sys.exit(0)
-except Exception as e:
-    sys.exit(1)
-" 2>/dev/null; do
-    COUNT=$((COUNT+1))
-    if [ $COUNT -ge $MAX_RETRIES ]; then
-        echo "[FATAL] Neo4j did not become ready after ${MAX_RETRIES} attempts. Aborting."
-        exit 1
-    fi
-    echo "[BOOT] Neo4j not ready yet (attempt $COUNT/$MAX_RETRIES)... retrying in 3s"
-    sleep 3
-done
-echo "[BOOT] Neo4j is ready."
 
 # ── 3. ESPERAR A QUE TOR PROXY ESTÉ ACTIVO ──────────────────────────────────
 echo "[BOOT] Verifying Tor SOCKS5 proxy at ${TOR_HOST:-tor-proxy}:${TOR_PORT:-9050}..."

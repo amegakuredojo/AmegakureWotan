@@ -45,6 +45,45 @@ app.add_typer(kaisen_app, name="kaisen")
 console = Console()
 
 @app.command()
+def run(
+    autonomous: bool = typer.Option(False, "--autonomous", "-a", help="Run offline code-agent (smolagents) instead of MCP Server"),
+    model_id: str = typer.Option("meta-llama/Llama-3.3-70B-Instruct", "--model-id", "-m", help="Model ID if running autonomous mode")
+):
+    """
+    Start the Karasugakure Engine. 
+    By default runs the MCP Server (stdio) for Claude/Cursor.
+    Use --autonomous to run the offline CodeAgent.
+    """
+    if autonomous:
+        console.print("[bold green]✔[/bold green] Iniciando Karasugakure en modo AUTÓNOMO (Sub-agentes locales)...")
+        from karasugakure.agents.code_agent import create_osint_code_agent
+        
+        agent = create_osint_code_agent()
+        # Override model ID if provided
+        agent.model.model_id = model_id
+        
+        console.print(f"[bold cyan]CodeAgent armado con modelo:[/bold cyan] {model_id}")
+        console.print("[yellow]Introduce tu objetivo OSINT (o 'exit' para salir):[/yellow]")
+        while True:
+            target = input("\n[KARASU] > ")
+            if target.lower() in ['exit', 'quit']:
+                break
+            try:
+                agent.run(target)
+            except Exception as e:
+                console.print(f"[bold red]Error en ejecución:[/bold red] {e}")
+    else:
+        # Modo MCP (Protocolo silenciado)
+        # Importante: No imprimir nada a stdout antes de levantar MCP, 
+        # porque rompe el protocolo JSON-RPC.
+        import asyncio
+        from karasugakure.mcp.server import main as mcp_main
+        
+        # Redirigir prints de rich al stderr o silenciarlos para no romper MCP
+        # Ejecutar servidor MCP
+        asyncio.run(mcp_main())
+
+@app.command()
 def init():
     """Initialize folders, directories and check Neo4j/Memgraph connection."""
     config = get_config()
@@ -55,10 +94,10 @@ def init():
     console.print("[bold green]✔[/bold green] Cryptographic forensic master key initialized.")
     
     db = get_db()
-    console.print(f"Connecting to GraphDB at [yellow]{db.config.uri}[/yellow]...")
+    console.print(f"Connecting to GraphDB at [yellow]{db.config.database_path}[/yellow]...")
     connected = db.check_connection()
     if connected:
-        console.print("[bold green]✔[/bold green] Connected to active Neo4j/Memgraph instance!")
+        console.print("[bold green]✔[/bold green] Connected to active Kùzu instance!")
     else:
         console.print("[bold yellow]⚠[/bold yellow] GraphDB is not reachable. Using mock/offline mode.")
 
@@ -401,6 +440,79 @@ def graph_import(
         proxy_route=None
     )
     console.print(f"[bold green]✔[/bold green] Graph imported successfully from [cyan]{filepath}[/cyan]")
+
+@graph_app.command("view")
+def graph_view():
+    """Visualize the OSINT graph structure directly in the terminal."""
+    from rich.tree import Tree
+    from karasugakure.graph.export import export_to_json
+    
+    db = get_db()
+    if not db.check_connection():
+        console.print("[bold red]Error:[/bold red] Database is offline.")
+        raise typer.Exit(1)
+        
+    data = export_to_json()
+    nodes = data.get("nodes", [])
+    edges = data.get("edges", [])
+    
+    if not nodes:
+        console.print("[yellow]Graph is empty.[/yellow]")
+        return
+        
+    adj = {}
+    node_map = {}
+    for n in nodes:
+        nid = n.get("properties", {}).get("value")
+        if not nid: continue
+        node_map[nid] = n
+        adj[nid] = []
+        
+    has_incoming = set()
+    for e in edges:
+        source = e.get("source_value")
+        target = e.get("target_value")
+        if source in adj:
+            adj[source].append(e)
+        has_incoming.add(target)
+            
+    roots = [n for n in nodes if n.get("properties", {}).get("value") not in has_incoming]
+    if not roots:
+        roots = nodes[:1]
+        
+    tree = Tree("OSINT Network Topology 🕸️", guide_style="bold cyan")
+    
+    def add_node_to_tree(parent_tree, node_id, visited):
+        if not node_id: return
+        if node_id in visited:
+            parent_tree.add(f"[dim]↺ Cyclical ref to {node_id}[/dim]")
+            return
+        visited.add(node_id)
+        
+        n = node_map.get(node_id)
+        if not n: return
+        
+        lbl = n.get("labels", ["Node"])[0]
+        val = n.get("properties", {}).get("value", node_id)
+        
+        color = "white"
+        if lbl == "Domain": color = "cyan"
+        elif lbl == "IP": color = "red"
+        elif lbl == "Email": color = "green"
+        
+        node_tree = parent_tree.add(f"[[bold {color}]{lbl}[/bold {color}]] {val}")
+        
+        for e in adj.get(node_id, []):
+            tgt = e.get("target_value")
+            rel_type = e.get("relationship", "RELATES_TO")
+            edge_branch = node_tree.add(f"[yellow]--({rel_type})-->[/yellow]")
+            add_node_to_tree(edge_branch, tgt, visited.copy())
+
+    for r in roots:
+        nid = r.get("properties", {}).get("value")
+        add_node_to_tree(tree, nid, set())
+        
+    console.print(tree)
 
 @app.command()
 def validate(
