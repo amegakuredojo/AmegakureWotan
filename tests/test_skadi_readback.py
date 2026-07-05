@@ -19,7 +19,7 @@ def test_skadi_write_read_cycle():
     assert manifest["status"] == "frozen"
     assert manifest["readback_verified"] == True
     assert manifest["bytes_size"] == len(test_content)
-    assert manifest["sha256"] == hashlib.sha256(test_content).hexdigest()
+    assert manifest["sha512"] == hashlib.sha512(test_content).hexdigest()
     
     filepath = Path(manifest["filepath"])
     assert filepath.exists()

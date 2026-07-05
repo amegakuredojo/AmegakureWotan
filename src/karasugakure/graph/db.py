@@ -58,9 +58,9 @@ class GraphDB:
                 try:
                     # Detectar si el query busca/crea por 'value' o por 'id'
                     if re.search(r':\s*' + node_label + r'\s*\{\s*value\s*:', query, re.IGNORECASE):
-                        self._conn.execute(f"CREATE NODE TABLE {node_label} (value STRING, id STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha256 STRING, PRIMARY KEY (value))")
+                        self._conn.execute(f"CREATE NODE TABLE {node_label} (value STRING, id STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha512 STRING, PRIMARY KEY (value))")
                     else:
-                        self._conn.execute(f"CREATE NODE TABLE {node_label} (id STRING, value STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha256 STRING, PRIMARY KEY (id))")
+                        self._conn.execute(f"CREATE NODE TABLE {node_label} (id STRING, value STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha512 STRING, PRIMARY KEY (id))")
                     self._known_tables.add(node_label.upper())
                 except Exception:
                     pass
@@ -157,8 +157,8 @@ class GraphDB:
             flags=re.IGNORECASE
         )
         query = re.sub(
-            r'MERGE\s*\(\s*([A-Za-z0-9_]+)\s*:\s*Evidence\s*\{\s*hash_sha256\s*:\s*(\$[A-Za-z0-9_]+)\s*\}\s*\)\s*SET\s+',
-            r'MERGE (\1:Evidence {id: \2}) SET \1.hash_sha256 = \2, ',
+            r'MERGE\s*\(\s*([A-Za-z0-9_]+)\s*:\s*Evidence\s*\{\s*hash_sha512\s*:\s*(\$[A-Za-z0-9_]+)\s*\}\s*\)\s*SET\s+',
+            r'MERGE (\1:Evidence {id: \2}) SET \1.hash_sha512 = \2, ',
             query,
             flags=re.IGNORECASE
         )
@@ -178,7 +178,7 @@ class GraphDB:
         
         # Fallbacks for other match/merge patterns (e.g. read-only MATCH)
         query = re.sub(r'\{\s*record_hash\s*:\s*(\$[A-Za-z0-9_]+)\s*\}', r'{id: \1}', query)
-        query = re.sub(r'\{\s*hash_sha256\s*:\s*(\$[A-Za-z0-9_]+)\s*\}', r'{id: \1}', query)
+        query = re.sub(r'\{\s*hash_sha512\s*:\s*(\$[A-Za-z0-9_]+)\s*\}', r'{id: \1}', query)
         query = re.sub(r'\{\s*hash\s*:\s*(\$[A-Za-z0-9_]+)\s*\}', r'{id: \1}', query)
         query = re.sub(r'\{\s*hypothesis_id\s*:\s*(\$[A-Za-z0-9_]+)\s*\}', r'{id: \1}', query)
 
@@ -218,7 +218,7 @@ class GraphDB:
             
             self._ensure_property_exists_for_var(query, var_name, prop_name, guess_val)
 
-        # 4. Handle Neo4j timestamp() function
+        # 4. Handle Kùzu timestamp() function
         if 'timestamp()' in query:
             query = query.replace('timestamp()', '$__sys_timestamp')
             new_params['__sys_timestamp'] = int(time.time() * 1000)
@@ -226,7 +226,7 @@ class GraphDB:
         return query, new_params
 
     def _serialize_kuzu_result(self, result: kuzu.QueryResult) -> List[Dict[str, Any]]:
-        """Convierte el output de Kuzu al formato Neo4j [ { "n": {props...} } ]"""
+        """Convierte el output de Kuzu al formato Kùzu [ { "n": {props...} } ]"""
         columns = result.get_column_names()
         records = []
         while result.has_next():
@@ -244,7 +244,7 @@ class GraphDB:
         return records
 
     def execute_query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """Executes a Cypher query on Kùzu imitating Neo4j driver output."""
+        """Executes a Cypher query on Kùzu imitating Kùzu driver output."""
         parameters = parameters or {}
         
         # Rewrite query and parameters for Kuzu compatibility
@@ -291,13 +291,13 @@ class GraphDB:
             return False
 
     def run_migrations(self):
-        """Creates Node tables if they don't exist in Kùzu (imita constraints de Neo4j)."""
+        """Creates Node tables if they don't exist in Kùzu (imita constraints de Kùzu)."""
         # Node tables where primary key is 'id'
         id_tables = ["Activity", "Evidence", "Agent", "AuditRecord", "Hypothesis"]
         for table in id_tables:
             if table.upper() not in self._known_tables:
                 try:
-                    self._conn.execute(f"CREATE NODE TABLE {table} (id STRING, value STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha256 STRING, PRIMARY KEY (id))")
+                    self._conn.execute(f"CREATE NODE TABLE {table} (id STRING, value STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha512 STRING, PRIMARY KEY (id))")
                     self._known_tables.add(table.upper())
                 except Exception:
                     pass
@@ -307,7 +307,7 @@ class GraphDB:
         for table in value_tables:
             if table.upper() not in self._known_tables:
                 try:
-                    self._conn.execute(f"CREATE NODE TABLE {table} (value STRING, id STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha256 STRING, PRIMARY KEY (value))")
+                    self._conn.execute(f"CREATE NODE TABLE {table} (value STRING, id STRING, uuid STRING, record_hash STRING, name STRING, run_id STRING, hash_sha512 STRING, PRIMARY KEY (value))")
                     self._known_tables.add(table.upper())
                 except Exception:
                     pass

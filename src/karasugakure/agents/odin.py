@@ -387,7 +387,7 @@ def report_node(state: PipelineState) -> PipelineState:
         
         # Calculate evidence hash from state findings & correlations
         serialized_data = json.dumps({"findings": state["findings"], "correlations": state["correlations"]}, sort_keys=True)
-        evidence_hash = hashlib.sha256(serialized_data.encode("utf-8")).hexdigest()
+        evidence_hash = hashlib.sha512(serialized_data.encode("utf-8")).hexdigest()
         
         hypothesis_id = f"hyp-{run_id}"
         phase_id = "report"
@@ -430,7 +430,7 @@ def report_node(state: PipelineState) -> PipelineState:
         lines.append("## Forensic Evidence Custody")
         for ev in state["evidence"]:
             lines.append(f"- **File**: `{ev['filename']}`")
-            lines.append(f"  - **SHA-256**: `{ev['sha256']}`")
+            lines.append(f"  - **SHA-512**: `{ev['sha512']}`")
             lines.append(f"  - **Size**: `{ev['bytes_size']} bytes`")
             
         report_content = "\n".join(lines)

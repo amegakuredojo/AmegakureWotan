@@ -40,7 +40,7 @@ class LokiAgent(BaseAgent):
             
             # Process isolation: Scrub child process environment variables
             for key in list(os.environ.keys()):
-                if "NEO4J" in key or "SECRET" in key or "AWS" in key or "GCP" in key:
+                if "Kùzu" in key or "SECRET" in key or "AWS" in key or "GCP" in key:
                     del os.environ[key]
             
             # Process isolation: secure temp directory

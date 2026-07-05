@@ -33,14 +33,14 @@ class ProvenancePayload(BaseModel):
 class ProvenanceRouter:
     """
     Enforces the ingestion contract for Karasugakure graphs.
-    No agent writes directly to Neo4j without passing through this router.
+    No agent writes directly to Kùzu without passing through this router.
     """
     def __init__(self):
         self.db = get_db()
 
     def route(self, payload: Dict[str, Any]) -> str:
         """
-        Validates payload, hashes raw evidence via Skadi, and commits W3C PROV graph to Neo4j.
+        Validates payload, hashes raw evidence via Skadi, and commits W3C PROV graph to Kùzu.
         Returns the run_id of the committed graph.
         """
         # 1. Validation (Pydantic will raise exceptions if invalid)
@@ -58,7 +58,7 @@ class ProvenanceRouter:
             
         skadi_res = skadi.execute(raw_json, tmp_path)
         os.unlink(tmp_path)
-        evidence_hash = skadi_res.get("sha256")
+        evidence_hash = skadi_res.get("sha512")
         
         # 3. Decision Matrix (Doctrina Humana vs Custodia)
         decision = "REVIEW_REQUIRED"
@@ -76,7 +76,7 @@ class ProvenanceRouter:
             "tool_version": prov_data.tool_version,
             "confidence": prov_data.confidence,
             "classification": prov_data.classification,
-            "hash_sha256": evidence_hash,
+            "hash_sha512": evidence_hash,
             "provenance_level": prov_data.provenance_level,
             "entity_type": prov_data.entity_type,
             "review_state": prov_data.review_state
@@ -133,7 +133,7 @@ class ProvenanceRouter:
         
         # Evidence Node
         cypher_evidence = """
-        MERGE (ev:Evidence:Entity {hash_sha256: $hash})
+        MERGE (ev:Evidence:Entity {hash_sha512: $hash})
         SET ev += $base_props, ev.uuid = coalesce(ev.uuid, $ev_uuid), ev.provenance_level = "RAW"
         WITH ev
         MATCH (act:Activity {run_id: $run_id})
@@ -156,7 +156,7 @@ class ProvenanceRouter:
         MERGE (h:Hypothesis:Entity {uuid: $h_uuid})
         SET h += $base_props, h.status = $status
         WITH h
-        MATCH (ev:Evidence {hash_sha256: $ev_hash})
+        MATCH (ev:Evidence {hash_sha512: $ev_hash})
         MATCH (e:Entity {value: $seed})
         MATCH (act:Activity {run_id: $run_id})
         MATCH (ag:Agent {name: $agent_name})

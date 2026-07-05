@@ -38,7 +38,7 @@ class CaptureManager:
         # 1. Capture HTML first
         html_path = self.capture_html(url, f"{base_filename}.html")
         html_content = html_path.read_text(encoding="utf-8")
-        html_hash = hashlib.sha256(html_content.encode("utf-8")).hexdigest()
+        html_hash = hashlib.sha512(html_content.encode("utf-8")).hexdigest()
         
         screenshot_path = None
         screenshot_hash = None
@@ -59,7 +59,7 @@ class CaptureManager:
                     content=screenshot_data,
                     folder="screenshots"
                 )
-                screenshot_hash = hashlib.sha256(screenshot_data).hexdigest()
+                screenshot_hash = hashlib.sha512(screenshot_data).hexdigest()
                 capture_method = "wkhtmltoimage"
                 temp_screenshot.unlink()
         except Exception:
@@ -91,7 +91,7 @@ class CaptureManager:
                         content=screenshot_data,
                         folder="screenshots"
                     )
-                    screenshot_hash = hashlib.sha256(screenshot_data).hexdigest()
+                    screenshot_hash = hashlib.sha512(screenshot_data).hexdigest()
                     capture_method = "selenium"
                     temp_screenshot.unlink()
             except Exception:

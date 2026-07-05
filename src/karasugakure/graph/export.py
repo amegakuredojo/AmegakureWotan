@@ -89,7 +89,7 @@ def export_to_json(
     if not evidence_hash:
         # Generate hash based on current nodes & edges
         serialized = json.dumps({"nodes": nodes, "edges": edges}, sort_keys=True)
-        evidence_hash_val = hashlib.sha256(serialized.encode('utf-8')).hexdigest()
+        evidence_hash_val = hashlib.sha512(serialized.encode('utf-8')).hexdigest()
     else:
         evidence_hash_val = evidence_hash
         

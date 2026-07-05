@@ -2,6 +2,6 @@
 ID: {{id}}
 Type: {{type}}
 File Path: {{filepath}}
-SHA-256 Signature: {{sha256}}
+SHA-512 Signature: {{sha512}}
 NATO Quality: {{rating}}
 Timestamp: {{timestamp}}

@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "karasugakure": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "/home/lugh/AmegakureDojo/Karasugakure/docker-compose.yml",
+        "--profile", "mcp",
+        "run",
+        "--rm",
+        "-i",
+        "--no-TTY",
+        "--no-deps",
+        "-e", "KARASU_SILENT_BOOTSTRAP=true",
+        "karasu-mcp",
+        "run"
+      ]
+    }
+  }
+}

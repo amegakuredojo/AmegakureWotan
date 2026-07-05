@@ -7,8 +7,9 @@ from pathlib import Path
 
 # Paths inside Docker container
 BASE_DIR = Path("/app")
-SESSIONS_DIR = Path("/data/sessions")
-REPORTS_DIR = Path("/data/reports")
+DATA_DIR = Path(os.environ.get("KARASU_DATA_DIR", "/data"))
+SESSIONS_DIR = DATA_DIR / "sessions"
+REPORTS_DIR = DATA_DIR / "reports"
 
 def run_cmd(args):
     cmd = ["python3", "-m", "karasugakure.cli"] + args
@@ -93,7 +94,7 @@ def main():
         sys.exit(1)
         
     # 9. Test evidence freeze & clearsign via Skadi
-    test_evidence_file = Path("/data/evidence/test_evidence.txt")
+    test_evidence_file = DATA_DIR / "evidence" / "test_evidence.txt"
     test_evidence_file.parent.mkdir(parents=True, exist_ok=True)
     with open(test_evidence_file, "w") as f:
         f.write("CONFIDENTIAL OSINT CAPTURE EVIDENCE")
@@ -116,7 +117,7 @@ def main():
         sys.exit(1)
         
     # 12. Run GBD JSON export/import cycle
-    export_json_file = Path("/data/evidence/graph_export.json")
+    export_json_file = DATA_DIR / "evidence" / "graph_export.json"
     success, stdout, _ = run_cmd(["graph", "export", str(export_json_file)])
     if not success:
         print("[-] Graph export failed.")

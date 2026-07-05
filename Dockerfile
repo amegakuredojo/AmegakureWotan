@@ -1,7 +1,8 @@
 # ─── STAGE 1: BUILDER ───────────────────────────────────────────────────────
+# FORGE_CONTEXT: CIVIL | FORGE_VERSION: 3.0 | FORGE_DATE: 2026-07-05T15:43:00Z
 FROM python:3.13-slim-bookworm AS builder
 
-# Instalar dependencias del sistema necesarias para compilar wheels
+# Instalar dependencias del sistema necesarias para compilar wheels + amass (Go)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
@@ -10,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     libxslt-dev \
     git \
+    golang-go \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
@@ -21,13 +23,19 @@ RUN git clone --branch v5.1.2 --depth 1 https://github.com/lanmaster53/recon-ng.
     && sed -i 's/uvloop==0.17.0/uvloop>=0.19.0/g' /opt/theHarvester/requirements/base.txt \
     && sed -i 's/lxml==4.9.3/lxml>=5.2.0/g' /opt/theHarvester/requirements/base.txt
 
+# Compilar amass (Go binary) en el stage builder — FIX-04: WAS en runtime stage
+# Esto evita instalar golang-go en runtime (+500MB) y hace el build reproducible
+ENV GOPATH=/root/go
+ENV PATH=$GOPATH/bin:$PATH
+RUN go install github.com/owasp-amass/amass/v4/...@v4.2.0 2>/dev/null || true
+
 # Copiar manifests del proyecto
-COPY pyproject.toml ./
+COPY pyproject.toml requirements-pinned.txt ./
 COPY src/ ./src/
 
 # Instalar todas las dependencias (proyecto + dev + herramientas OSINT) en el directorio aislado /install
 RUN pip install --upgrade pip --no-cache-dir \
-    && pip install --prefix=/install --no-cache-dir ".[dev]" \
+    && pip install --prefix=/install --no-cache-dir --require-hashes -r requirements-pinned.txt \
     && pip install --prefix=/install --no-cache-dir build \
     && pip install --prefix=/install --no-cache-dir sherlock-project>=0.14.3 \
     && pip install --prefix=/install --no-cache-dir -r /opt/recon-ng/REQUIREMENTS \
@@ -78,16 +86,12 @@ COPY --from=builder /install /usr/local
 COPY --from=builder /opt/recon-ng /opt/recon-ng
 COPY --from=builder /opt/theHarvester /opt/theHarvester
 
+# FIX-04: Copiar amass binary ya compilado desde builder (sin re-instalar Go en runtime)
+COPY --from=builder /root/go/bin/amass /usr/local/bin/amass
+
 # Crear enlaces simbólicos para los scripts OSINT
 RUN ln -s /opt/recon-ng/recon-ng /usr/local/bin/recon-ng \
     && ln -s /opt/theHarvester/theHarvester.py /usr/local/bin/theharvester
-
-# Instalar amass (Go binary, version v4.2.0 pinned)
-RUN apt-get update && apt-get install -y --no-install-recommends golang-go \
-    && go install github.com/owasp-amass/amass/v4/...@v4.2.0 \
-    && cp /root/go/bin/amass /usr/local/bin/amass \
-    && apt-get remove -y golang-go && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/* /root/go/pkg
 
 # Crear usuario no-root con UID fijo para aislamiento
 RUN groupadd -g 1001 karasu \
@@ -117,11 +121,15 @@ RUN mkdir -p /data/evidence /data/sessions /data/reports /data/graph \
 
 USER karasu
 
-# Variable para que Python encuentre el paquete
+# Variables de entorno del contenedor
 ENV PYTHONPATH=/app/src
 ENV KARASU_DATA_DIR=/data
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+# OPSEC: Tor bypass para modo Sandbox/Dev (false = kill switch activo)
+ENV KARASU_OPSEC_BYPASS_TOR=false
+# Sandbox: permite override de path de Kùzu via env var
+ENV KUZU_DATABASE_PATH=/data/karasu_vault.kuzu
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []

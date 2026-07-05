@@ -64,7 +64,7 @@ class ForensicAuditLedger:
                 if res and res[0].get("last_hash"):
                     return res[0]["last_hash"]
         except Exception as e:
-            logger.warning(f"Failed to query last ledger record hash from Neo4j: {e}")
+            logger.warning(f"Failed to query last ledger record hash from Kùzu: {e}")
 
         if not self.ledger_path.exists() or self.ledger_path.stat().st_size == 0:
             return "0" * 64
@@ -144,7 +144,7 @@ class ForensicAuditLedger:
                 if tool_path.exists():
                     try:
                         with open(tool_path, "rb") as f_tool:
-                            tool_versions[tool_path.name] = hashlib.sha256(f_tool.read()).hexdigest()
+                            tool_versions[tool_path.name] = hashlib.sha512(f_tool.read()).hexdigest()
                     except Exception:
                         pass
 
@@ -156,7 +156,7 @@ class ForensicAuditLedger:
             # we check the caller action / agent_name and pass appropriate parameters.
             g_data = export_to_json()
             serialized_g = json.dumps(g_data, sort_keys=True)
-            graph_snapshot_hash = hashlib.sha256(serialized_g.encode("utf-8")).hexdigest()
+            graph_snapshot_hash = hashlib.sha512(serialized_g.encode("utf-8")).hexdigest()
         except Exception:
             pass
 
@@ -168,7 +168,7 @@ class ForensicAuditLedger:
         
         if not evidence_hash:
             serialized_findings = json.dumps(findings, sort_keys=True)
-            evidence_hash_val = hashlib.sha256(serialized_findings.encode("utf-8")).hexdigest()
+            evidence_hash_val = hashlib.sha512(serialized_findings.encode("utf-8")).hexdigest()
         else:
             evidence_hash_val = evidence_hash
 
@@ -206,13 +206,13 @@ class ForensicAuditLedger:
         
         # Compute HMAC signature using audit master key
         master_key = self._get_master_key()
-        signature = hmac.new(master_key, serialized_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+        signature = hmac.new(master_key, serialized_payload.encode("utf-8"), hashlib.sha512).hexdigest()
         
         # Compile record
         record = {
             "payload": payload,
             "signature": signature,
-            "record_hash": hashlib.sha256((serialized_payload + signature).encode("utf-8")).hexdigest()
+            "record_hash": hashlib.sha512((serialized_payload + signature).encode("utf-8")).hexdigest()
         }
         
         # Try to sign with PGP/GPG key if available
@@ -224,7 +224,7 @@ class ForensicAuditLedger:
         with open(self.ledger_path, "a") as f:
             f.write(json.dumps(record) + "\n")
 
-        # Dual Ingest: Persist to Neo4j as AuditRecord node and edge
+        # Dual Ingest: Persist to Kùzu as AuditRecord node and edge
         try:
             from karasugakure.graph.db import get_db
             db = get_db()
@@ -260,9 +260,9 @@ class ForensicAuditLedger:
                         "prev_hash": prev_hash,
                         "curr_hash": record["record_hash"]
                     })
-                logger.info(f"AuditRecord node persisted to Neo4j (Hash: {record['record_hash'][:8]})")
+                logger.info(f"AuditRecord node persisted to Kùzu (Hash: {record['record_hash'][:8]})")
         except Exception as e:
-            logger.warning(f"Failed to write AuditRecord to Neo4j: {e}")
+            logger.warning(f"Failed to write AuditRecord to Kùzu: {e}")
             
         logger.info(f"Forensic Audit record logged for {agent_name} -> {action} (Hash: {record['record_hash'][:8]})")
         return record
@@ -300,7 +300,7 @@ class ForensicAuditLedger:
             "corruptions": []
         }
 
-        # 1. Verify Neo4j Graph-Based Ledger
+        # 1. Verify Kùzu Graph-Based Ledger
         db_records = []
         db_connected = False
         try:
@@ -322,7 +322,7 @@ class ForensicAuditLedger:
                 """
                 db_records = db.execute_query(query)
         except Exception as e:
-            logger.warning(f"Could not connect to Neo4j for ledger verification: {e}")
+            logger.warning(f"Could not connect to Kùzu for ledger verification: {e}")
 
         master_key = self._get_master_key()
 
@@ -340,7 +340,7 @@ class ForensicAuditLedger:
                     diff_summary["is_corrupt"] = True
                     diff_summary["corruptions"].append({
                         "database_index": idx,
-                        "reason": "Graph record structural fields missing in Neo4j"
+                        "reason": "Graph record structural fields missing in Kùzu"
                     })
                     continue
                 
@@ -349,36 +349,36 @@ class ForensicAuditLedger:
                     diff_summary["is_corrupt"] = True
                     diff_summary["corruptions"].append({
                         "database_index": idx,
-                        "reason": "Graph broken hash-chain link in Neo4j",
+                        "reason": "Graph broken hash-chain link in Kùzu",
                         "expected_prev_hash": expected_prev_hash,
                         "actual_prev_hash": prev_hash
                     })
 
                 # Verify HMAC signature
-                computed_sig = hmac.new(master_key, payload_str.encode("utf-8"), hashlib.sha256).hexdigest()
+                computed_sig = hmac.new(master_key, payload_str.encode("utf-8"), hashlib.sha512).hexdigest()
                 if not hmac.compare_digest(sig, computed_sig):
                     diff_summary["is_corrupt"] = True
                     diff_summary["corruptions"].append({
                         "database_index": idx,
-                        "reason": "Graph HMAC signature mismatch in Neo4j",
+                        "reason": "Graph HMAC signature mismatch in Kùzu",
                         "expected_signature": computed_sig,
                         "actual_signature": sig
                     })
 
                 # Verify record hash
-                computed_hash = hashlib.sha256((payload_str + sig).encode("utf-8")).hexdigest()
+                computed_hash = hashlib.sha512((payload_str + sig).encode("utf-8")).hexdigest()
                 if computed_hash != rec_hash:
                     diff_summary["is_corrupt"] = True
                     diff_summary["corruptions"].append({
                         "database_index": idx,
-                        "reason": "Graph record hash corruption in Neo4j",
+                        "reason": "Graph record hash corruption in Kùzu",
                         "expected_hash": computed_hash,
                         "actual_hash": rec_hash
                     })
                 
                 expected_prev_hash = rec_hash
             
-            logger.info(f"Verified {idx} graph-based AuditRecord nodes in Neo4j.")
+            logger.info(f"Verified {idx} graph-based AuditRecord nodes in Kùzu.")
 
         # 2. Verify File-Based Ledger (always, as dual-layer validation and local fallback)
         if not self.ledger_path.exists():
@@ -425,7 +425,7 @@ class ForensicAuditLedger:
                         
                     # 2. Verify HMAC Signature
                     serialized_payload = json.dumps(payload, sort_keys=True)
-                    computed_sig = hmac.new(master_key, serialized_payload.encode("utf-8"), hashlib.sha256).hexdigest()
+                    computed_sig = hmac.new(master_key, serialized_payload.encode("utf-8"), hashlib.sha512).hexdigest()
                     if not hmac.compare_digest(sig, computed_sig):
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({
@@ -436,7 +436,7 @@ class ForensicAuditLedger:
                         })
                         
                     # 3. Verify record hash
-                    computed_hash = hashlib.sha256((serialized_payload + sig).encode("utf-8")).hexdigest()
+                    computed_hash = hashlib.sha512((serialized_payload + sig).encode("utf-8")).hexdigest()
                     if computed_hash != rec_hash:
                         diff_summary["is_corrupt"] = True
                         diff_summary["corruptions"].append({

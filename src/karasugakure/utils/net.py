@@ -79,6 +79,15 @@ def make_tor_request(
     if "Accept-Language" not in req_headers:
         req_headers["Accept-Language"] = "en-US,en;q=0.9"
         
+    # OPSEC Jitter: Exponential delay to mimic human behavior and evade WAF rate limits
+    # Mean delay of 2.5 seconds, capped at 6.0 seconds.
+    import time
+    delay = random.expovariate(1.0 / 2.5)
+    delay = min(delay, 6.0)
+    if delay > 0:
+        logger.debug(f"[OPSEC-JITTER] Aplicando retraso exponencial de {delay:.2f}s antes del request HTTP/S...")
+        time.sleep(delay)
+        
     try:
         response = requests.request(
             method=method,

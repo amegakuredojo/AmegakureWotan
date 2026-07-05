@@ -85,7 +85,7 @@ def run(
 
 @app.command()
 def init():
-    """Initialize folders, directories and check Neo4j/Memgraph connection."""
+    """Initialize folders, directories and check Kùzu/Memgraph connection."""
     config = get_config()
     config.init_dirs()
     from karasugakure.evidence.audit import ForensicAuditLedger
@@ -152,7 +152,7 @@ def recon(target: str = typer.Argument(..., help="Target IP or Domain")):
         for ip in results["ips"]:
             odin.process_finding("IP", ip, "heimdall", "A", "1")
             odin.process_connection("Domain", target, "IP", ip, "RESOLVES_TO", "DNS Resolution", "heimdall")
-        console.print("[bold green]✔[/bold green] Recon results ingested to Neo4j.")
+        console.print("[bold green]✔[/bold green] Recon results ingested to Kùzu.")
 
 @app.command()
 def humint(target: str = typer.Argument(..., help="Target Alias or Username")):
@@ -192,7 +192,7 @@ def humint(target: str = typer.Argument(..., help="Target Alias or Username")):
         for profile in results["profiles"]:
             odin.process_finding("Profile", profile["url"], "loki", "A", "1")
             odin.process_connection("Alias", target, "Profile", profile["url"], "HAS_PROFILE", f"Profile on {profile['platform']}", "loki")
-        console.print("[bold green]✔[/bold green] HUMINT results ingested to Neo4j.")
+        console.print("[bold green]✔[/bold green] HUMINT results ingested to Kùzu.")
 
 @app.command()
 def darkweb(query: str = typer.Argument(..., help="Search query or leak keyword")):
@@ -264,7 +264,7 @@ def entity(
     ))
     
     if "run_id" in results:
-        console.print(f"[bold green]✔[/bold green] W3C PROV Entity graph ingested to Neo4j (Run ID: [yellow]{results['run_id']}[/yellow]).")
+        console.print(f"[bold green]✔[/bold green] W3C PROV Entity graph ingested to Kùzu (Run ID: [yellow]{results['run_id']}[/yellow]).")
     else:
         console.print("[bold yellow]⚠[/bold yellow] PROV Graph ingestion skipped (Database offline).")
 
@@ -306,7 +306,7 @@ def graph_ingest(
     """Ingest a validated entity node manually into the graph db."""
     db = get_db()
     if not db.check_connection():
-        console.print("[bold red]Error:[/bold red] Neo4j/Memgraph database is not reachable. Ensure it is running.")
+        console.print("[bold red]Error:[/bold red] Kùzu/Memgraph database is not reachable. Ensure it is running.")
         raise typer.Exit(1)
         
     odin = OdinAgent()
@@ -345,7 +345,7 @@ def graph_query(
     """Translate natural language to Cypher and execute query (Norn + Mimir)."""
     db = get_db()
     if not db.check_connection():
-        console.print("[bold red]Error:[/bold red] Neo4j/Memgraph database is not reachable.")
+        console.print("[bold red]Error:[/bold red] Kùzu/Memgraph database is not reachable.")
         raise typer.Exit(1)
         
     norn = NornAgent()
@@ -544,7 +544,7 @@ def validate(
 def freeze(
     filepath: str = typer.Argument(..., help="File path to capture/evidence file")
 ):
-    """Freeze evidence, sign with SHA-256 and store in Evidence Vault (Skadi)."""
+    """Freeze evidence, sign with SHA-512 and store in Evidence Vault (Skadi)."""
     if not os.path.exists(filepath):
         console.print(f"[bold red]Error:[/bold red] File not found: {filepath}")
         raise typer.Exit(1)
@@ -561,13 +561,13 @@ def freeze(
         action="freeze",
         parameters={"filepath": filepath},
         findings=[res],
-        evidence_files=[{"filepath": filepath, "sha256": res["sha256"]}],
+        evidence_files=[{"filepath": filepath, "sha512": res["sha512"]}],
         proxy_route=None
     )
     
     console.print(Panel(
         f"File: [cyan]{filepath}[/cyan]\n"
-        f"SHA-256: [bold]{res['sha256']}[/bold]\n"
+        f"SHA-512: [bold]{res['sha512']}[/bold]\n"
         f"Size: [green]{res['bytes_size']} bytes[/green]\n"
         f"Status: [bold green]FROZEN & SIGNED[/bold green]",
         title="Skadi Evidence Vault"
@@ -771,7 +771,7 @@ def correlate():
         )
         
     console.print(table)
-    console.print("[bold green]✔[/bold green] Correlation findings successfully ingested to Neo4j.")
+    console.print("[bold green]✔[/bold green] Correlation findings successfully ingested to Kùzu.")
 
 @audit_app.command("verify")
 def audit_verify():

@@ -49,19 +49,19 @@ class EvidenceBundler:
                     zipf.write(fpath, arcname=fpath.name)
                     
         # 3. Cryptographically sign the ZIP archive using the audit master key
-        sha256_hash = hashlib.sha256()
+        sha512_hash = hashlib.sha512()
         with open(zip_path, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(chunk)
-        zip_hash = sha256_hash.hexdigest()
+                sha512_hash.update(chunk)
+        zip_hash = sha512_hash.hexdigest()
         
         # Sign zip hash using HMAC (ForensicAuditLedger master key)
         try:
             ledger = ForensicAuditLedger()
             key = ledger._get_master_key()
-            signature = hmac.new(key, zip_hash.encode("utf-8"), hashlib.sha256).hexdigest()
+            signature = hmac.new(key, zip_hash.encode("utf-8"), hashlib.sha512).hexdigest()
         except Exception:
-            signature = hashlib.sha256(zip_hash.encode("utf-8")).hexdigest()
+            signature = hashlib.sha512(zip_hash.encode("utf-8")).hexdigest()
             
         # Write signature file
         sig_data = {

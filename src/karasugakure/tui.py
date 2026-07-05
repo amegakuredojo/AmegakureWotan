@@ -27,7 +27,7 @@ from karasugakure.agents.odin import OdinAgent
 logger = logging.getLogger("karasugakure.tui")
 
 class SystemStatusWidget(Static):
-    """Renders Tor proxies, Neo4j, and GPG Vault active status."""
+    """Renders Tor proxies, Kùzu, and GPG Vault active status."""
     
     def on_mount(self) -> None:
         self.set_interval(3.0, self.update_status)
@@ -37,7 +37,7 @@ class SystemStatusWidget(Static):
         config = get_config()
         db = get_db()
         
-        # 1. Neo4j Status
+        # 1. Kùzu Status
         db_ok = db.check_connection()
         db_txt = "[bold green]ONLINE[/bold green]" if db_ok else "[bold red]OFFLINE[/bold red]"
         
@@ -62,7 +62,7 @@ class SystemStatusWidget(Static):
         table = Table.grid(padding=(0, 2))
         table.add_column("Service", style="bold cyan")
         table.add_column("Status")
-        table.add_row("GraphDB (Neo4j)", db_txt)
+        table.add_row("GraphDB (Kùzu)", db_txt)
         table.add_row("Tor Proxy Pool", tor_txt)
         table.add_row("GPG Credentials", vault_txt)
         
@@ -78,7 +78,7 @@ class LogStreamer(RichLog):
         super().__init__(max_lines=500, min_width=80, wrap=True, **kwargs)
 
 class GraphTreeWidget(Static):
-    """Pulls node relationships from Neo4j and visualizes them hierarchically in a tactical tree layout."""
+    """Pulls node relationships from Kùzu and visualizes them hierarchically in a tactical tree layout."""
     
     def on_mount(self) -> None:
         self.set_interval(5.0, self.refresh_graph_tree)
@@ -88,7 +88,7 @@ class GraphTreeWidget(Static):
         db = get_db()
         if not db.check_connection():
             self.update(Panel(
-                "[bold red]Cannot load graph: Neo4j database is OFFLINE.[/bold red]",
+                "[bold red]Cannot load graph: Kùzu database is OFFLINE.[/bold red]",
                 title="Graph Explorer",
                 border_style="red"
             ))
@@ -441,7 +441,7 @@ class KarasuTuiApp(App):
 
     def action_refresh(self) -> None:
         log_widget = self.query_one("#console-logs", LogStreamer)
-        log_widget.write("[SYSTEM] Force refreshing Neo4j graph & audit log displays...")
+        log_widget.write("[SYSTEM] Force refreshing Kùzu graph & audit log displays...")
         self.query_one("#graph-viewer", GraphTreeWidget).refresh_graph_tree()
         self.query_one("#ledger-viewer", LedgerIntegrityWidget).check_ledger()
 

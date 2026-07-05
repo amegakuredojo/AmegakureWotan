@@ -9,7 +9,7 @@ class GraphAdapter:
         self.db = get_db()
 
     def query_schema(self) -> List[Dict[str, Any]]:
-        """Queries the schema or generic metadata of the Neo4j/Memgraph DB."""
+        """Queries the schema or generic metadata of the Kùzu/Memgraph DB."""
         if not self.db.check_connection():
             return []
         try:

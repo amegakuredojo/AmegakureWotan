@@ -1,6 +1,6 @@
 # 🦅 Karasugakure (烏隠れ) — Advanced OSINT Forensic Graph Harness
 
-![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)
 ![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)
@@ -17,7 +17,7 @@ Designed with paramount **OPSEC** in mind, it routes all external reconnaissance
 - **Isolated Docker Runtime:** The entire pipeline executes inside a locked-down, network-restricted `docker-compose` topology.
 - **Strict OPSEC Networking:** The reconnaissance container is disconnected from the clearnet. It bridges EXCLUSIVELY to a Tor proxy sidecar container. A "Kill Switch" guarantees no traffic escapes unanonymized.
 - **Embedded Graph DB (Kùzu):** Intelligence nodes (Domains, IPs, Emails, Personas) are structured locally using Kùzu, allowing lightning-fast relational queries entirely offline.
-- **Forensic Audit Ledger:** Every agent action and DB mutation is cryptographically hashed (HMAC-SHA256) into a tamper-proof audit trail for legally verifiable chain-of-custody reporting.
+- **Forensic Audit Ledger:** Every agent action and DB mutation is cryptographically hashed (HMAC-SHA512) into a tamper-proof audit trail for legally verifiable chain-of-custody reporting.
 - **Agent Mesh Topology:**
   - `Heimdall`: Digital Reconnaissance & Perimeter Mapping.
   - `Huginn`: Corporate Entity & HUMINT mapping.
@@ -109,6 +109,14 @@ make test
 
 ## 🛡️ License & Disclaimer
 
-This software is for authorized intelligence gathering, digital forensics, and security research only. Operators are solely responsible for compliance with their local legislation and international laws.
+Copyright (c) 2026 AmegakureDojo - Shakujo Forge V3. All rights reserved.
+
+**PROPRIETARY AND CONFIDENTIAL.**
+
+No permission is granted to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software without explicit written authorization from AmegakureDojo command.
+
+This software contains military-grade OSINT and forensic mechanisms. Any unauthorized execution or deployment outside of isolated authorized sandboxes constitutes a breach of security protocols.
+
+Operators are solely responsible for compliance with their local legislation and international laws.
 
 *Property of Amegakure Dojo.*

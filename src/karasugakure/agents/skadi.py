@@ -15,12 +15,12 @@ class SkadiAgent(BaseAgent):
 
     def execute(self, content: bytes, filepath: str, **kwargs) -> Dict[str, Any]:
         """
-        Freezes evidence by writing to disk, generating its sha256 checksum,
+        Freezes evidence by writing to disk, generating its sha512 checksum,
         performing readback integrity verification, linking to the latest audit block,
         and producing bundle hashes across evidence types.
         """
         config = get_config()
-        sha256_hash = hashlib.sha256(content).hexdigest()
+        sha512_hash = hashlib.sha512(content).hexdigest()
 
         # Determine target path: write to evidence folder if relative
         if os.path.isabs(filepath):
@@ -36,16 +36,16 @@ class SkadiAgent(BaseAgent):
         # Verify readback integrity after freeze
         with open(target_path, "rb") as f:
             readback_content = f.read()
-        readback_hash = hashlib.sha256(readback_content).hexdigest()
+        readback_hash = hashlib.sha512(readback_content).hexdigest()
         
-        if readback_hash != sha256_hash:
+        if readback_hash != sha512_hash:
             raise IOError(
                 f"CRITICAL ERROR: Skadi readback verification failed for '{target_path.name}'! "
-                f"Expected hash {sha256_hash}, got {readback_hash}."
+                f"Expected hash {sha512_hash}, got {readback_hash}."
             )
 
         # 1. Request Time-Stamping Authority (TSA) signature
-        tsa_signature = self._request_tsa_signature(sha256_hash)
+        tsa_signature = self._request_tsa_signature(sha512_hash)
         
         # 2. Enforce WORM (Write-Once-Read-Many)
         self._enforce_worm(target_path)
@@ -65,7 +65,7 @@ class SkadiAgent(BaseAgent):
 
         for name, dir_path in subdirs_to_bundle.items():
             if dir_path.exists():
-                hasher = hashlib.sha256()
+                hasher = hashlib.sha512()
                 files_found = sorted(list(dir_path.glob("*")))
                 for f in files_found:
                     if f.is_file() and f != target_path:
@@ -76,13 +76,13 @@ class SkadiAgent(BaseAgent):
                             pass
                 bundle_hashes[name] = hasher.hexdigest()
             else:
-                bundle_hashes[name] = hashlib.sha256().hexdigest() # Empty dir hash
+                bundle_hashes[name] = hashlib.sha512().hexdigest() # Empty dir hash
 
         # Manifest schema stays stable across releases
         return {
             "filepath": str(target_path),
             "filename": target_path.name,
-            "sha256": sha256_hash,
+            "sha512": sha512_hash,
             "bytes_size": len(content),
             "status": "frozen",
             "source": "skadi",
@@ -108,7 +108,7 @@ class SkadiAgent(BaseAgent):
             import time
             ts = str(time.time())
             tsa_payload = f"TSA_REQUEST|{file_hash}|{ts}".encode("utf-8")
-            tsa_sig = hmac.new(master_key, tsa_payload, hashlib.sha256).hexdigest()
+            tsa_sig = hmac.new(master_key, tsa_payload, hashlib.sha512).hexdigest()
             return f"TSA-DOJO-{ts}-{tsa_sig}"
         except Exception as e:
             return f"TSA-FAILED-{str(e)}"

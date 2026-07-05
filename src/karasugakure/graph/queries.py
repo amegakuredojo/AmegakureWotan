@@ -15,7 +15,7 @@ OPERATIONAL_QUERIES = {
     "evidencia_sin_firma": """
     MATCH (ev:Evidence)-[:SUPPORTS]->(h:Hypothesis)
     WHERE NOT (h)-[:SIGNED_BY]->(:Agent)
-    RETURN ev.hash_sha256, h.uuid
+    RETURN ev.hash_sha512, h.uuid
     """,
 
     "entidades_sin_fuente_primaria": """
@@ -40,6 +40,6 @@ OPERATIONAL_QUERIES = {
     MATCH (act:Activity)-[:USED]->(e:Entity)
     MATCH (act)-[:WAS_GENERATED_BY]->(ev:Evidence)
     WHERE NOT (ev)-[:SUPPORTS]->(:Hypothesis)-[:WAS_DERIVED_FROM]->(e)
-    RETURN e.uuid, ev.hash_sha256
+    RETURN e.uuid, ev.hash_sha512
     """
 }

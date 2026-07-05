@@ -27,9 +27,24 @@ def enforce_opsec_policy(agent_name: str, config=None):
     """
     Enforces strict network and environment policy for agents.
     If agent_name is 'hel' or 'loki', ensures Tor proxy is active.
-    Raises OPSECViolationException if the environment is unsafe.
+    
+    KARASU_OPSEC_BYPASS_TOR=true → omite check de Tor (modo Sandbox/Dev/CI).
+    ADVERTENCIA: Solo usar en entornos de desarrollo aislados.
+    
+    Raises:
+        OPSECViolationException: Si el entorno es inseguro y no hay bypass activo.
     """
     agent_lower = agent_name.lower()
+    
+    # Sandbox/Dev bypass: permite ejecución sin Tor en entornos controlados
+    bypass_tor = os.environ.get("KARASU_OPSEC_BYPASS_TOR", "false").lower() == "true"
+    if bypass_tor:
+        logger.warning(
+            f"[OPSEC-BYPASS] KARASU_OPSEC_BYPASS_TOR=true — "
+            f"Tor check OMITIDO para '{agent_name}'. SOLO para Sandbox/Dev."
+        )
+        return
+    
     if agent_lower in ["hel", "loki"]:
         # Tor proxy must be reachable
         tor_host = "127.0.0.1"
@@ -44,11 +59,16 @@ def enforce_opsec_policy(agent_name: str, config=None):
         
         logger.info(f"Enforcing OPSEC for network agent '{agent_name}' against Tor proxy {tor_host}:{tor_port}...")
         if not check_tor_socks_proxy(tor_host, tor_port):
-            msg = f"CRITICAL OPSEC ALARM: Tor proxy is unreachable at {tor_host}:{tor_port}! Execution of '{agent_name}' agent is BLOCKED to prevent traffic leaks."
+            msg = (
+                f"CRITICAL OPSEC ALARM: Tor proxy is unreachable at {tor_host}:{tor_port}! "
+                f"Execution of '{agent_name}' agent is BLOCKED to prevent traffic leaks. "
+                f"Set KARASU_OPSEC_BYPASS_TOR=true for Sandbox/Dev environments."
+            )
             logger.error(msg)
             raise OPSECViolationException(msg)
         
         logger.info(f"OPSEC check passed for '{agent_name}': Tor proxy is active.")
+
 
 def get_active_proxies() -> list[str]:
     """Returns a list of reachable proxies from the configured pool."""
@@ -130,7 +150,7 @@ def run_isolated_process(func: Callable, *args, **kwargs) -> Any:
                 pass
             # Clear any remaining environment variables
             for key in list(os.environ.keys()):
-                if any(x in key.upper() for x in ["NEO4J", "SECRET", "PASSWORD", "AUTH", "KEY"]):
+                if any(x in key.upper() for x in ["Kùzu", "SECRET", "PASSWORD", "AUTH", "KEY"]):
                     del os.environ[key]
             # Run garbage collector to clear memory structures
             gc.collect()

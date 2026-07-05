@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "karasugakure-sandbox": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "/home/lugh/AmegakureDojo/Karasugakure/docker-compose.yml",
+        "-f",
+        "/home/lugh/AmegakureDojo/Karasugakure/docker-compose.sandbox.yml",
+        "--profile", "sandbox-mcp",
+        "run",
+        "--rm",
+        "-i",
+        "--no-TTY",
+        "--no-deps",
+        "-e", "KARASU_SILENT_BOOTSTRAP=true",
+        "-e", "KARASU_OPSEC_BYPASS_TOR=true",
+        "-e", "KARASU_MCP_TOR_TIMEOUT=3",
+        "-e", "SANDBOX_DATA_PATH=/tmp/karasu_sandbox",
+        "karasu-mcp",
+        "run"
+      ]
+    }
+  }
+}

@@ -36,7 +36,7 @@ class HelAgent(BaseAgent):
 
             # OPSEC Isolation: scrub child environment variables
             for key in list(os.environ.keys()):
-                if "NEO4J" in key or "SECRET" in key or "AWS" in key or "GCP" in key:
+                if "Kùzu" in key or "SECRET" in key or "AWS" in key or "GCP" in key:
                     del os.environ[key]
 
             # Route context verification
@@ -138,7 +138,7 @@ class HelAgent(BaseAgent):
                 # Capture screenshot, HTML, and hash manifest
                 html_path = html_dir / f"{onion}.html"
                 screenshot_path = screenshots_dir / f"{onion}.png"
-                hash_path = hashes_dir / f"{onion}.sha256"
+                hash_path = hashes_dir / f"{onion}.sha512"
 
                 # Write real HTML page
                 html_path.write_text(html_content, encoding="utf-8")
@@ -148,9 +148,9 @@ class HelAgent(BaseAgent):
                 screenshot_path.write_bytes(mock_png)
 
                 # Compute manifest hashes
-                html_hash = hashlib.sha256(html_content.encode("utf-8")).hexdigest()
-                png_hash = hashlib.sha256(mock_png).hexdigest()
-                hash_manifest = hashlib.sha256(f"html:{html_hash};png:{png_hash}".encode("utf-8")).hexdigest()
+                html_hash = hashlib.sha512(html_content.encode("utf-8")).hexdigest()
+                png_hash = hashlib.sha512(mock_png).hexdigest()
+                hash_manifest = hashlib.sha512(f"html:{html_hash};png:{png_hash}".encode("utf-8")).hexdigest()
                 hash_path.write_text(hash_manifest)
 
                 site_results = {

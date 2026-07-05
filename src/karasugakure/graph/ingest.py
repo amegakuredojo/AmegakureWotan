@@ -15,7 +15,7 @@ def ingest_entity(
     nato_reliability: str = "A",
     nato_credibility: str = "1"
 ) -> Dict[str, Any]:
-    """Ingests a single entity into Neo4j/Memgraph."""
+    """Ingests a single entity into Kùzu/Memgraph."""
     db = get_db()
     query = create_entity_query(entity_type)
     params = {

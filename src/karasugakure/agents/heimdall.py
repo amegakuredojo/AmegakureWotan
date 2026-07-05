@@ -100,12 +100,12 @@ class HeimdallAgent(BaseAgent):
         return ranked
 
     def _get_tool_hash(self) -> str:
-        """Retrieves SHA-256 hash of amass_wrapper.sh to record tool version."""
+        """Retrieves SHA-512 hash of amass_wrapper.sh to record tool version."""
         skills_base = Path(__file__).resolve().parent.parent.parent.parent / "skills"
         wrapper_path = skills_base / "recon" / "amass_wrapper.sh"
         if wrapper_path.exists():
             with open(wrapper_path, "rb") as f:
-                return hashlib.sha256(f.read()).hexdigest()
+                return hashlib.sha512(f.read()).hexdigest()
         return "unknown_amass_wrapper_hash"
 
     def _get_signature(self, data_str: str) -> str:
@@ -113,9 +113,9 @@ class HeimdallAgent(BaseAgent):
         try:
             ledger = ForensicAuditLedger()
             key = ledger._get_master_key()
-            return hmac.new(key, data_str.encode("utf-8"), hashlib.sha256).hexdigest()
+            return hmac.new(key, data_str.encode("utf-8"), hashlib.sha512).hexdigest()
         except Exception:
-            return hashlib.sha256(data_str.encode("utf-8")).hexdigest()
+            return hashlib.sha512(data_str.encode("utf-8")).hexdigest()
 
     def _check_rate_limit(self):
         """Enforces a 5-second rate limit between recon runs to prevent noise."""
@@ -132,8 +132,8 @@ class HeimdallAgent(BaseAgent):
                 pass
         self.rate_limit_file.write_text(str(time.time()))
 
-    def _search_neo4j_for_domain(self, domain: str) -> List[str]:
-        """Search Neo4j for previously identified subdomains connected to this domain."""
+    def _search_Kùzu_for_domain(self, domain: str) -> List[str]:
+        """Search Kùzu for previously identified subdomains connected to this domain."""
         try:
             from karasugakure.agents.mimir import MimirAgent
             mimir = MimirAgent()
@@ -142,13 +142,13 @@ class HeimdallAgent(BaseAgent):
             records = mimir.execute("query", query=query)
             return [r["sub_id"] for r in records if "sub_id" in r]
         except Exception as e:
-            logger.warning(f"Passive Neo4j lookup failed: {e}")
+            logger.warning(f"Passive Kùzu lookup failed: {e}")
             return []
 
     def execute(self, target: str, passive_first: bool = True, **kwargs) -> Dict[str, Any]:
         """
         Runs infrastructure recon on a target domain/IP.
-        Implements GAP 2: passive_first, Neo4j fallback, cache checks.
+        Implements GAP 2: passive_first, Kùzu fallback, cache checks.
         """
         target = self.normalize_dns(target)
         self._check_rate_limit()
@@ -174,21 +174,21 @@ class HeimdallAgent(BaseAgent):
             except Exception as e:
                 logger.warning(f"Failed loading cache: {e}")
 
-        # Passive fallback 2: Query Neo4j
-        neo4j_subs = []
+        # Passive fallback 2: Query Kùzu
+        Kùzu_subs = []
         if passive_first and not cached_result:
-            neo4j_subs = self._search_neo4j_for_domain(target)
-            if neo4j_subs:
-                logger.info(f"Heimdall passive_first found {len(neo4j_subs)} subdomains in Neo4j.")
+            Kùzu_subs = self._search_Kùzu_for_domain(target)
+            if Kùzu_subs:
+                logger.info(f"Heimdall passive_first found {len(Kùzu_subs)} subdomains in Kùzu.")
                 # We can return a partial passive result here
                 return {
                     "target": target,
-                    "subdomains": neo4j_subs,
+                    "subdomains": Kùzu_subs,
                     "ips": [],
                     "ports": [],
                     "asn_enrichment": {},
                     "cert_history": [],
-                    "ranked_hosts": self.rank_hosts(neo4j_subs, [], []),
+                    "ranked_hosts": self.rank_hosts(Kùzu_subs, [], []),
                     "source": "heimdall_passive"
                 }
 
@@ -228,10 +228,10 @@ class HeimdallAgent(BaseAgent):
 
         # Fallback if wrapper failed or returned no domains
         if not subdomains:
-            # Check if we had passive ones from neo4j to avoid totally empty result
-            neo4j_fallback = self._search_neo4j_for_domain(target)
-            if neo4j_fallback:
-                subdomains = neo4j_fallback
+            # Check if we had passive ones from Kùzu to avoid totally empty result
+            Kùzu_fallback = self._search_Kùzu_for_domain(target)
+            if Kùzu_fallback:
+                subdomains = Kùzu_fallback
             else:
                 subdomains = [f"admin.{target}", f"vpn.{target}", f"mail.{target}"]
             

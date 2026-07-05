@@ -1,14 +1,18 @@
 # docker-compose.yml — Despliegue de Producción Hardened de Karasugakure
-# REQUIERE: Archivo .env con la variable NEO4J_PASSWORD definida
+# FORGE_CONTEXT: CIVIL
+# FORGE_VERSION: 3.0
+# FORGE_DATE: 2026-07-05T15:43:00Z
 
 name: karasugakure
 
 # ─── REDES AISLADAS ─────────────────────────────────────────────────────────
 networks:
-  # Red interna: Solo intercomunicación entre servicios, sin salida directa a internet
+  # Red interna: Solo intercomunicación entre servicios.
+  # internal: true → BLOQUEA salida a Internet desde esta red.
+  # Sólo tor-proxy (en red 'egress') tiene acceso externo. KILL SWITCH ACTIVO.
   internal:
     driver: bridge
-    internal: false
+    internal: true   # FIX-01: WAS false — OPSEC kill switch ahora activo
     ipam:
       config:
         - subnet: 172.28.0.0/24
@@ -20,10 +24,6 @@ networks:
 
 # ─── VOLÚMENES NOMBRADOS (Persistencia Forense Coherente) ────────────────────
 volumes:
-  neo4j_data:
-    driver: local
-  neo4j_logs:
-    driver: local
   evidence_vault:
     driver: local
   karasu_sessions:
@@ -31,36 +31,6 @@ volumes:
 
 # ─── SERVICIOS ──────────────────────────────────────────────────────────────
 services:
-
-  # ── NEO4J: Graph Database (Hardened) ───────────────────────────────────────
-  neo4j:
-    image: neo4j:5.18.0-community
-    container_name: karasu-neo4j
-    restart: unless-stopped
-    user: "7474:7474"
-    networks:
-      internal:
-        ipv4_address: 172.28.0.10
-    ports:
-      - "7687:7687"
-    environment:
-      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
-      NEO4J_dbms_memory_heap_initial__size: "512m"
-      NEO4J_dbms_memory_heap_max__size: "1G"
-      NEO4J_dbms_connector_http_enabled: "false"
-      NEO4J_dbms_connector_bolt_listen__address: "0.0.0.0:7687"
-    volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
-    healthcheck:
-      test: ["CMD", "neo4j", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    # Hardening: Drop all capabilities. No privilege escalation allowed.
-    cap_drop:
-      - ALL
 
   # ── TOR PROXY: Egress OPSEC Layer ─────────────────────────────────────────
   tor-proxy:
@@ -87,7 +57,22 @@ services:
       retries: 5
       start_period: 15s
 
-  # ── KARASU CORE: Framework Engine ──────────────────────────────────────────
+  # ── SEARXNG: Local OSINT Search Gateway ────────────────────────────────────
+  searxng:
+    image: searxng/searxng:latest
+    container_name: karasu-searxng
+    restart: unless-stopped
+    networks:
+      internal:
+        ipv4_address: 172.28.0.50
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+
+  # ── KARASU CORE: Framework Engine (uso interactivo / CLI) ──────────────────
   karasu:
     build:
       context: .
@@ -105,22 +90,21 @@ services:
     dns:
       - 0.0.0.0
     depends_on:
-      neo4j:
-        condition: service_healthy
       tor-proxy:
         condition: service_started
+      searxng:
+        condition: service_started
     environment:
-      NEO4J_PASSWORD: "${NEO4J_PASSWORD}"
-      NEO4J_URI: "bolt://172.28.0.10:7687"
-      NEO4J_USERNAME: "neo4j"
-      NEO4J_DATABASE: "neo4j"
       OPSEC_TOR_PROXY: "socks5h://172.28.0.20:9150"
+      TOR_HOST: "172.28.0.20"
       TOR_PORT: "9150"
       KARASU_DATA_DIR: "/data"
       PYTHONPATH: "/app/src"
       KARASU_RUN_SMOKE_TEST: "${KARASU_RUN_SMOKE_TEST:-false}"
       KARASU_ISOLATION_TIMEOUT: "${KARASU_ISOLATION_TIMEOUT:-120}"
       KARASU_KEY_ROTATION_DAYS: "${KARASU_KEY_ROTATION_DAYS:-30}"
+      SEARXNG_URL: "http://172.28.0.50:8080/search"
+      KARASU_OPSEC_BYPASS_TOR: "${KARASU_OPSEC_BYPASS_TOR:-false}"
     volumes:
       - evidence_vault:/data
       - karasu_sessions:/data/sessions
@@ -137,3 +121,46 @@ services:
         reservations:
           memory: 512M
     command: ["--help"]
+
+  # ── KARASU MCP: Servidor MCP stdio para AGY / OpenCode ────────────────────
+  # Uso: docker compose run --rm -i --no-TTY karasu-mcp run
+  # Este servicio está optimizado para MCP: bootstrap silencioso, timeout Tor
+  # reducido a 10s, y no fuerza dependencias (se asume stack ya levantado).
+  karasu-mcp:
+    image: karasugakure/karasu:latest
+    container_name: karasu-mcp
+    restart: "no"
+    profiles:
+      - mcp
+    networks:
+      internal:
+        ipv4_address: 172.28.0.31
+    dns:
+      - 0.0.0.0
+    environment:
+      OPSEC_TOR_PROXY: "socks5h://172.28.0.20:9150"
+      TOR_HOST: "172.28.0.20"
+      TOR_PORT: "9150"
+      KARASU_DATA_DIR: "/data"
+      PYTHONPATH: "/app/src"
+      KARASU_SILENT_BOOTSTRAP: "true"        # Suprime banners → no contamina JSON-RPC
+      KARASU_MCP_TOR_TIMEOUT: "10"           # Máx 10s esperando Tor en modo MCP
+      KARASU_ISOLATION_TIMEOUT: "${KARASU_ISOLATION_TIMEOUT:-120}"
+      KARASU_KEY_ROTATION_DAYS: "${KARASU_KEY_ROTATION_DAYS:-30}"
+      SEARXNG_URL: "http://172.28.0.50:8080/search"
+      KARASU_OPSEC_BYPASS_TOR: "${KARASU_OPSEC_BYPASS_TOR:-false}"
+    volumes:
+      - evidence_vault:/data
+      - karasu_sessions:/data/sessions
+    stdin_open: true
+    tty: false
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M

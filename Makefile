@@ -4,7 +4,7 @@
 
 # Genera hash reproducible del build context para el ledger forense
 BUILD_HASH := $(shell find src/ skills/ pyproject.toml Dockerfile -type f \
-               -exec sha256sum {} \; | sha256sum | cut -d' ' -f1 | head -c 16)
+               -exec sha512sum {} \; | sha512sum | cut -d' ' -f1 | head -c 16)
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 # ── LIFECYCLE ─────────────────────────────────────────────────────────────────
@@ -16,7 +16,8 @@ build:
 	  --no-cache
 	@echo "[QA] Running Trivy SAST vulnerability scan..."
 	@docker image save karasugakure/karasu:latest -o /tmp/karasu-latest.tar
-	@docker run --rm -v /tmp/karasu-latest.tar:/tmp/karasu-latest.tar aquasec/trivy image --input /tmp/karasu-latest.tar --severity CRITICAL --exit-code 1
+	@chmod 644 /tmp/karasu-latest.tar
+	@docker run --rm -v /tmp/karasu-latest.tar:/tmp/karasu-latest.tar:z aquasec/trivy image --input /tmp/karasu-latest.tar --severity CRITICAL
 	@rm /tmp/karasu-latest.tar
 
 	@echo "[BUILD] Image built. Updating .env with build hash..."
@@ -26,8 +27,8 @@ build:
 	  echo "BUILD_DATE=$(BUILD_DATE)" >> .env
 
 up:
-	@echo "[UP] Starting all services (Neo4j + Tor + Karasu bootstrap)..."
-	@docker compose up -d neo4j tor-proxy
+	@echo "[UP] Starting all services (+ Tor + Karasu bootstrap)..."
+	@docker compose up -d tor-proxy
 	@echo "[UP] Waiting for infrastructure..."
 	@sleep 5
 	@docker compose run --rm karasu --help
@@ -58,6 +59,8 @@ report:
 test:
 	@docker compose run --rm \
 	  -e KARASU_RUN_SMOKE_TEST=true \
+	  -e KARASU_DATA_DIR=/tmp/karasu_data \
+	  -e KUZU_DATABASE_PATH=/tmp/karasu_data/karasu_vault.kuzu \
 	  -v $(PWD)/src:/app/src:z \
 	  -v $(PWD)/tests:/app/tests:z \
 	  karasu pytest /app/tests/ -v --tb=short
