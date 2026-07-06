@@ -1,5 +1,6 @@
-# Default torrc configuration for Karasugakure
-SocksPort 127.0.0.1:9050
-ControlPort 127.0.0.1:9051
-CookieAuthentication 1
-DataDirectory ~/.karasugakure/opsec/tor_data
+# Default torrc configuration for Karasugakure in Docker
+SocksPort 0.0.0.0:9150
+ControlPort 0.0.0.0:9051
+HashedControlPassword 16:EEC933D5057E688460AA6A745AFCA8F40C0F7CC21C5E8FB976EC52B920
+DataDirectory /var/lib/tor
+

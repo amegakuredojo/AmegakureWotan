@@ -1,0 +1,64 @@
+use_default_settings: true
+
+general:
+  debug: false
+  instance_name: "karasugakure-osint"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: false
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "en"
+  formats:
+    - html
+    - json
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  secret_key: "karasugakure-super-secret-mcp-key-v3"
+  base_url: false
+  method: "POST"
+  limiter: false
+  image_proxy: false
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 20.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true
+  retries: 3
+  useragent_suffix: ""
+  proxies:
+    all://:
+      - socks5h://172.28.0.20:9150 # Enruta todo el egreso de SearXNG por Tor (OPSEC Kill Switch)
+
+engines:
+  - name: google
+    engine: google
+    shortcut: go
+    disabled: false
+
+  - name: google scholar
+    engine: google_scholar
+    shortcut: gos
+    disabled: false
+
+  - name: bing
+    engine: bing
+    shortcut: bi
+    disabled: false
+
+  - name: github
+    engine: github
+    shortcut: gh
+    disabled: false
+
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
+    disabled: false

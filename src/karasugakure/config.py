@@ -14,6 +14,8 @@ class OpsecSettings(BaseSettings):
     
     tor_proxy: str = "socks5h://127.0.0.1:9050"
     tor_proxy_pool: str = "socks5h://127.0.0.1:9050"
+    tor_control_host: str = "127.0.0.1"
+    tor_control_port: int = 9051
     user_agent_rotation: bool = True
     tls_fingerprint_policy: str = "random"
 

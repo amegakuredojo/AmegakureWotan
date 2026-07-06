@@ -25,7 +25,6 @@ class TorIsolatorDaemon:
     """
     def __init__(self) -> None:
         self.host_ip: str = "UNKNOWN"
-        self.control_port: int = 9051
         self.is_running: bool = False
         self.consecutive_failures: int = 0
         self.max_failures: int = 3
@@ -44,10 +43,13 @@ class TorIsolatorDaemon:
 
     def rotate_identity(self) -> None:
         """Sends a NEWNYM signal to Tor to rotate the SOCKS5 circuit exit node."""
-        tor_host: str = "127.0.0.1"
+        from karasugakure.config import get_config
+        config = get_config()
+        tor_host: str = config.opsec.tor_control_host
+        control_port: int = config.opsec.tor_control_port
         try:
-            with Controller.from_port(port=self.control_port, address=tor_host) as controller:
-                controller.authenticate()  # Assumes no password or cookie auth configured for local docker
+            with Controller.from_port(port=control_port, address=tor_host) as controller:
+                controller.authenticate(password="KarasuSecretControlPass")
                 controller.signal(Signal.NEWNYM)
                 logger.info("OPSEC: Tor circuit successfully rotated (NEWNYM). New identity assumed.")
         except Exception as e:
@@ -58,12 +60,16 @@ class TorIsolatorDaemon:
         if self.host_ip == "UNKNOWN":
             logger.warning("Kill switch active, but real IP is UNKNOWN. Relying on timeout failures.")
             
+        from karasugakure.config import get_config
+        config = get_config()
+        tor_proxy = config.opsec.tor_proxy
+        
         while self.is_running:
             try:
                 # Make request through the Tor proxy
                 proxies: Dict[str, str] = {
-                    "http": "socks5h://127.0.0.1:9050",
-                    "https": "socks5h://127.0.0.1:9050"
+                    "http": tor_proxy,
+                    "https": tor_proxy
                 }
                 res = requests.get("https://api.ipify.org", proxies=proxies, timeout=10.0)
                 

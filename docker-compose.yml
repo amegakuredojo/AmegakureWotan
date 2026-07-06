@@ -1,7 +1,7 @@
 # docker-compose.yml — Despliegue de Producción Hardened de Karasugakure
 # FORGE_CONTEXT: CIVIL
 # FORGE_VERSION: 3.0
-# FORGE_DATE: 2026-07-05T15:43:00Z
+# FORGE_DATE: 2026-07-06T00:48:00Z
 
 name: karasugakure
 
@@ -43,6 +43,9 @@ services:
       egress: {} # Único con salida a Internet
     ports:
       - "9050:9150"
+      - "9051:9051"
+    volumes:
+      - ./opsec/torrc:/etc/tor/torrc:ro
     cap_drop:
       - ALL
     cap_add:
@@ -71,6 +74,8 @@ services:
       - CHOWN
       - SETUID
       - SETGID
+    volumes:
+      - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
 
   # ── KARASU CORE: Framework Engine (uso interactivo / CLI) ──────────────────
   karasu:
@@ -96,6 +101,8 @@ services:
         condition: service_started
     environment:
       OPSEC_TOR_PROXY: "socks5h://172.28.0.20:9150"
+      OPSEC_TOR_CONTROL_HOST: "172.28.0.20"
+      OPSEC_TOR_CONTROL_PORT: "9051"
       TOR_HOST: "172.28.0.20"
       TOR_PORT: "9150"
       KARASU_DATA_DIR: "/data"
@@ -139,6 +146,8 @@ services:
       - 0.0.0.0
     environment:
       OPSEC_TOR_PROXY: "socks5h://172.28.0.20:9150"
+      OPSEC_TOR_CONTROL_HOST: "172.28.0.20"
+      OPSEC_TOR_CONTROL_PORT: "9051"
       TOR_HOST: "172.28.0.20"
       TOR_PORT: "9150"
       KARASU_DATA_DIR: "/data"
@@ -164,3 +173,4 @@ services:
           memory: 2G
         reservations:
           memory: 512M
+
