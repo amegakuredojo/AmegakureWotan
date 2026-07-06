@@ -81,7 +81,7 @@ cat > "$WRAPPER_PATH" << 'EOF'
 # Karasugakure Global Wrapper
 PROJECT_DIR="CURRENT_DIR_PLACEHOLDER"
 cd "$PROJECT_DIR" || exit 1
-if [ "$1" == "recon" ] || [ "$1" == "shell" ] || [ "$1" == "test" ]; then
+if [ "$1" == "shell" ] || [ "$1" == "test" ]; then
     make "$@"
 else
     docker compose run --rm -v "$PROJECT_DIR/src:/app/src:z" karasu "$@"

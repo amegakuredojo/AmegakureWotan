@@ -117,7 +117,10 @@ RUN chmod +x /entrypoint.sh \
 # Directorio de trabajo y datos del operador
 WORKDIR /app
 RUN mkdir -p /data/evidence /data/sessions /data/reports /data/graph \
-    && chown -R karasu:karasu /data
+    && chown -R karasu:karasu /data \
+    && echo '#!/usr/bin/env bash' > /usr/local/bin/karasu \
+    && echo 'exec python3 -m karasugakure.cli "$@"' >> /usr/local/bin/karasu \
+    && chmod +x /usr/local/bin/karasu
 
 USER karasu
 

@@ -127,7 +127,7 @@ echo ""
 # ── 7. EJECUTAR COMANDO SOLICITADO ───────────────────────────────────────────
 if [ "$#" -eq 0 ]; then
     exec python3 -m karasugakure.cli tui
-elif [ "$1" = "pytest" ] || [ "$1" = "bash" ] || [ "$1" = "sh" ] || [ "$1" = "ls" ] || [ "$1" = "python" ] || [ "$1" = "python3" ]; then
+elif [ "$1" = "pytest" ] || [ "$1" = "bash" ] || [ "$1" = "sh" ] || [ "$1" = "ls" ] || [ "$1" = "python" ] || [ "$1" = "python3" ] || [ "$1" = "karasu" ] || [ "$1" = "/usr/local/bin/karasu" ]; then
     exec "$@"
 else
     if [ "$IS_MCP" = "true" ]; then
