@@ -42,6 +42,10 @@ app.add_typer(audit_app, name="audit")
 kaisen_app = typer.Typer(help="Manage Kaisen institutional knowledge base")
 app.add_typer(kaisen_app, name="kaisen")
 
+# ── AmegakureWotan: capa consolidada (GELSI/RoE/MCP/DFIR) montada bajo 'karasu wotan' ──
+from karasugakure.cli_wotan import app as wotan_app
+app.add_typer(wotan_app, name="wotan")
+
 console = Console()
 
 @app.command()

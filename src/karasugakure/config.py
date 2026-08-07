@@ -34,8 +34,9 @@ class Config(BaseModel):
             "bin",
             "core/runtime", "core/router", "core/policy", "core/session",
             "agents", "adapters", "graph/db", "graph/cypher", "graph/ingest",
-            "opsec", "opsec/keys", "evidence/screenshots", "evidence/html", "evidence/transcripts",
-            "evidence/hashes", "evidence/video", "reports", "sessions"
+            "opsec", "opsec/keys", "opsec/roe",
+            "evidence", "evidence/screenshots", "evidence/html", "evidence/transcripts",
+            "evidence/hashes", "evidence/video", "evidence/dfir", "reports", "sessions"
         ]
         for sd in subdirs:
             (self.base_dir / sd).mkdir(parents=True, exist_ok=True)

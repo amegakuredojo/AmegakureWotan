@@ -13,6 +13,7 @@ dependencies = [
   "textual>=0.70.0",
   "pydantic>=2.7",
   "pydantic-settings>=2.3",
+  "PyYAML>=6.0",
   "langgraph>=0.2",
   "kuzu>=0.4.0",
   "mcp>=1.0.0",
@@ -41,6 +42,7 @@ dev = [
 
 [project.scripts]
 karasu = "karasugakure.cli:app"
+amewotan = "karasugakure.cli_wotan:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

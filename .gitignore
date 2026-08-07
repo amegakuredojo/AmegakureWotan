@@ -27,6 +27,7 @@ pi-repo/
 # Local User Configurations & Evidence Vault
 # (These folders store operator intelligence and should not be tracked)
 sessions/
+profiles/
 evidence/screenshots/
 evidence/html/
 evidence/transcripts/
