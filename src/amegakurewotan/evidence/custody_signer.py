@@ -121,17 +121,18 @@ def _pubkey_sha256(key_path: Path) -> str:
 def _openssl_sign(key_path: Path, digest_hex: str) -> str:
     """Firma Ed25519 del digest.
 
-    EdDSA hashea SHA-512 internamente, por lo que firmamos el mensaje (hex del
-    SHA-512 de la cadena) SIN -rawin: portable en todas las versiones de OpenSSL
-    >=3.0 (evita la ambigüedad de -rawin entre 3.0 y 3.5).
+    Vía canónica portable: `openssl dgst -sign` (sin -digest explícito, EdDSA lo
+    rechaza) sobre el mensaje = hex del SHA-512 de la cadena. Verificable con
+    `openssl dgst -verify` en OpenSSL 3.0 y 3.5 indistintamente.
     """
     import tempfile
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as tf:
         tf.write(digest_hex)
         datafile = tf.name
+    sigfile = datafile + ".sig"
     try:
         proc = subprocess.run(
-            ["openssl", "pkeyutl", "-sign", "-inkey", str(key_path), "-in", datafile],
+            ["openssl", "dgst", "-sign", str(key_path), "-out", sigfile, datafile],
             capture_output=True, timeout=30,
         )
     finally:
@@ -140,8 +141,18 @@ def _openssl_sign(key_path: Path, digest_hex: str) -> str:
         except OSError:
             pass
     if proc.returncode != 0:
+        try:
+            os.unlink(sigfile)
+        except OSError:
+            pass
         raise CustodySignerError(f"openssl sign falló: {proc.stderr.decode().strip()}")
-    return proc.stdout.hex()
+    with open(sigfile, "rb") as fh:
+        sig = fh.read()
+    try:
+        os.unlink(sigfile)
+    except OSError:
+        pass
+    return sig.hex()
 
 
 def _openssl_verify(key_path: Path, digest_hex: str, sig_hex: str) -> bool:
@@ -154,11 +165,10 @@ def _openssl_verify(key_path: Path, digest_hex: str, sig_hex: str) -> bool:
         sigfile = sf.name
     try:
         proc = subprocess.run(
-            ["openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(key_path),
-             "-in", datafile, "-sigfile", sigfile],
+            ["openssl", "dgst", "-verify", str(key_path), "-signature", sigfile, datafile],
             capture_output=True, text=True, timeout=30,
         )
-        return proc.returncode == 0 and "Success" in (proc.stdout + proc.stderr)
+        return proc.returncode == 0 and "Verified OK" in (proc.stdout + proc.stderr)
     finally:
         for f in (datafile, sigfile):
             try:
