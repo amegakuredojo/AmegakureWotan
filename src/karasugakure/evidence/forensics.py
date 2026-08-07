@@ -114,11 +114,12 @@ def sha512_file(path: str | Path, chunk_size: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
-def canonical_json(body: Dict[str, Any]) -> str:
+def canonical_json(body: "Dict[str, Any] | List[Any]") -> str:
     """
     Serialización canónica determinista: claves ordenadas, sin espacios
     superfluos, UTF-8, NaN prohibido. Es la ÚNICA representación usada para
     calcular el chain_hash — cualquier desviación rompe la verificación.
+    Acepta dict (cuerpo de registro) o list (colecciones de resultados).
     """
     return json.dumps(
         body,
