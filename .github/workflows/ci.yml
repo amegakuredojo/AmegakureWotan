@@ -1,0 +1,76 @@
+# PROTOCOLO: AMEGAKURE_FORGE | CI
+# FORGE_CONTEXT: CIVIL
+# FORGE_VERSION: AmegakureWotan-1.0
+# WOTAN-F6.5: Pipeline CI/CD — verificación automática de la capa Wotan.
+#
+# El entorno operacional del Dojo valida en cada push/PR:
+#   • instalación del paquete amegakurewotan (editable)
+#   • suite de no-regresión (pytest) bajo opsec bypass (sin red Tor real)
+#   • gate de fallo si algún test se rompe (integridad de la cadena de custodia)
+name: CI — AmegakureWotan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: "Suite Wotan (py${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    env:
+      AMEWOTAN_OPSEC_BYPASS_TOR: "true"
+      AMEWOTAN_DATA_DIR: "/tmp/amewotan-ci-data"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system deps (Tor client stub optional)
+        run: |
+          sudo apt-get update || true
+          # No se requiere Tor real en CI; los adapters usan bypass opsec.
+
+      - name: Install project (editable) + test tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pytest-timeout
+
+      - name: Run test suite (no-regression Wotan F1-F6)
+        run: |
+          python -m pytest tests/ -q --no-header -p no:cacheprovider --timeout=45
+
+  smoke-cli:
+    name: "Smoke CLI amewotan (end-to-end real)"
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      AMEWOTAN_OPSEC_BYPASS_TOR: "true"
+      AMEWOTAN_DATA_DIR: "/tmp/amewotan-ci-smoke"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+          python -m pip install pytest-timeout
+      - name: CLI — init + forensic sign/verify + hitl list
+        run: |
+          python -m amegakurewotan.cli_wotan init
+          python -m amegakurewotan.cli_wotan mcp dispatch defense.phishing_detect --args '{"subject":"examp1e.com","params":{}}'
+          python -m amegakurewotan.cli_wotan forensic sign
+          python -m amegakurewotan.cli_wotan forensic verify-sign
+          python -m amegakurewotan.cli_wotan hitl list
