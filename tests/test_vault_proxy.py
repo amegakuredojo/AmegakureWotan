@@ -68,8 +68,12 @@ def test_make_tor_request_rotation():
     pool = "socks5h://127.0.0.1:9050,socks5h://127.0.0.1:9051"
     config.opsec.tor_proxy_pool = pool
     
-    # Mock both proxies as online
+    # Mock both proxies as online. Also neutralize the OPSEC jitter sleep and the
+    # Tor circuit rotation so the 20-iteration rotation check is hermetic and fast
+    # (otherwise random.expovariate jitter sleeps up to 6s per request => test hangs).
     with patch("karasugakure.policy.opsec.check_tor_socks_proxy", return_value=True), \
+         patch("karasugakure.utils.net.time.sleep", return_value=None), \
+         patch("karasugakure.daemons.isolator.isolator.rotate_identity", return_value=None), \
          patch("requests.request") as mock_req:
          
         mock_req.return_value = MagicMock(status_code=200, text="success")

@@ -2,6 +2,7 @@ import random
 import requests
 import json
 import logging
+import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 from karasugakure.config import get_config
@@ -81,7 +82,6 @@ def make_tor_request(
         
     # OPSEC Jitter: Exponential delay to mimic human behavior and evade WAF rate limits
     # Mean delay of 2.5 seconds, capped at 6.0 seconds.
-    import time
     delay = random.expovariate(1.0 / 2.5)
     delay = min(delay, 6.0)
     if delay > 0:
