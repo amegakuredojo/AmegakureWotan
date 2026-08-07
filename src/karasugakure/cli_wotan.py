@@ -171,6 +171,47 @@ def forensic_verify() -> None:
         raise typer.Exit(code=1)
 
 
+@forensic_app.command("sign")
+def forensic_sign() -> None:
+    """Sella la cadena de custodia consolidada con firma Ed25519 no-repudiable (openssl).
+
+    Calcula el digest SHA-512 de toda la cadena y lo firma Ed25519. El sobre
+    (custody.sig.json) vive APARTE del timeline. Idempotente: re-emite si la
+    clave es la misma.
+    """
+    from karasugakure.evidence.custody_signer import sign_chain
+
+    overlay = sign_chain()
+    console.print(Panel.fit(
+        f"[bold green]CADENA FIRMADA (Ed25519)[/bold green]\n"
+        f"registros: {overlay['records']}\n"
+        f"chain_sha512: {overlay['chain_sha512'][:32]}...\n"
+        f"pubkey_sha256: {overlay['pubkey_sha256'][:32]}...\n"
+        f"ts_utc: {overlay['ts_utc']}",
+        title="custody.sig.json", border_style="green",
+    ))
+
+
+@forensic_app.command("verify-sign")
+def forensic_verify_sign() -> None:
+    """Verifica la firma Ed25519 de la cadena contra el sobre persistido (tamper-evidence)."""
+    from karasugakure.evidence.custody_signer import verify_chain_signature
+
+    res = verify_chain_signature()
+    if res["valid"]:
+        console.print(Panel.fit(
+            f"[bold green]FIRMA ED25519 VÁLIDA[/bold green]\n"
+            f"registros: {res['records']}\nchain_sha512: {res['chain_sha512'][:32]}...",
+            title="custody.sig.json", border_style="green",
+        ))
+    else:
+        console.print(Panel.fit(
+            f"[bold red]FIRMA INVÁLIDA[/bold red]\n{res['reason']}",
+            title="custody.sig.json", border_style="red",
+        ))
+        raise typer.Exit(code=1)
+
+
 @forensic_app.command("tail")
 def forensic_tail(n: int = typer.Option(10, "--n", help="Últimos N eventos.")) -> None:
     """Muestra los últimos eventos de la cadena de custodia."""
