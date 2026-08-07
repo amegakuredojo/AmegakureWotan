@@ -119,20 +119,19 @@ def _pubkey_sha256(key_path: Path) -> str:
 
 
 def _openssl_sign(key_path: Path, digest_hex: str) -> str:
-    """Firma Ed25519 del digest.
+    """Firma Ed25519 (rawin) de los bytes crudos del digest SHA-512.
 
-    Vía canónica portable: `openssl dgst -sign` (sin -digest explícito, EdDSA lo
-    rechaza) sobre el mensaje = hex del SHA-512 de la cadena. Verificable con
-    `openssl dgst -verify` en OpenSSL 3.0 y 3.5 indistintamente.
+    EdDSA no admite digest explícito; pkeyutl -rawin firma el mensaje crudo (los
+    64 bytes del SHA-512). Portable en OpenSSL >=3.0.
     """
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, mode="w") as tf:
-        tf.write(digest_hex)
+    digest_bytes = bytes.fromhex(digest_hex)
+    with tempfile.NamedTemporaryFile(delete=False) as tf:
+        tf.write(digest_bytes)
         datafile = tf.name
-    sigfile = datafile + ".sig"
     try:
         proc = subprocess.run(
-            ["openssl", "dgst", "-sign", str(key_path), "-out", sigfile, datafile],
+            ["openssl", "pkeyutl", "-sign", "-rawin", "-inkey", str(key_path), "-in", datafile],
             capture_output=True, timeout=30,
         )
     finally:
@@ -141,40 +140,47 @@ def _openssl_sign(key_path: Path, digest_hex: str) -> str:
         except OSError:
             pass
     if proc.returncode != 0:
-        try:
-            os.unlink(sigfile)
-        except OSError:
-            pass
         raise CustodySignerError(f"openssl sign falló: {proc.stderr.decode().strip()}")
-    with open(sigfile, "rb") as fh:
-        sig = fh.read()
-    try:
-        os.unlink(sigfile)
-    except OSError:
-        pass
-    return sig.hex()
+    return proc.stdout.hex()
 
 
 def _openssl_verify(key_path: Path, digest_hex: str, sig_hex: str) -> bool:
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, mode="w") as df:
-        df.write(digest_hex)
+    digest_bytes = bytes.fromhex(digest_hex)
+    with tempfile.NamedTemporaryFile(delete=False) as df:
+        df.write(digest_bytes)
         datafile = df.name
     with tempfile.NamedTemporaryFile(delete=False) as sf:
         sf.write(bytes.fromhex(sig_hex))
         sigfile = sf.name
-    try:
-        proc = subprocess.run(
-            ["openssl", "dgst", "-verify", str(key_path), "-signature", sigfile, datafile],
-            capture_output=True, text=True, timeout=30,
-        )
-        return proc.returncode == 0 and "Verified OK" in (proc.stdout + proc.stderr)
-    finally:
-        for f in (datafile, sigfile):
+    # Verificar contra la clave PUBLICA (no la privada).
+    pub_proc = subprocess.run(
+        ["openssl", "pkey", "-in", str(key_path), "-pubout"],
+        capture_output=True, timeout=30,
+    )
+    ok = False
+    if pub_proc.returncode == 0:
+        with tempfile.NamedTemporaryFile(delete=False) as pf:
+            pf.write(pub_proc.stdout)
+            pubfile = pf.name
+        try:
+            proc = subprocess.run(
+                ["openssl", "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", pubfile,
+                 "-in", datafile, "-sigfile", sigfile],
+                capture_output=True, text=True, timeout=30,
+            )
+            ok = proc.returncode == 0 and "Success" in (proc.stdout + proc.stderr)
+        finally:
             try:
-                os.unlink(f)
+                os.unlink(pubfile)
             except OSError:
                 pass
+    for f in (datafile, sigfile):
+        try:
+            os.unlink(f)
+        except OSError:
+            pass
+    return ok
 
 
 def sign_chain(timeline_path: Optional[str | Path] = None) -> Dict[str, Any]:
