@@ -58,8 +58,6 @@ def test_sign_creates_overlay_and_verifies(seeded_chain, tmp_path):
     assert "signature_hex" not in raw
 
     res = verify_chain_signature(seeded_chain.timeline_path)
-    if not res["valid"]:
-        print("DEBUG verify reason:", res)
     assert res["valid"] is True
     assert res["records"] == 3
     assert res["chain_sha512"] == overlay["chain_sha512"]
@@ -76,10 +74,7 @@ def test_sign_key_permissions_0600(seeded_chain, tmp_path):
 
 def test_tamper_invalidates_signature(seeded_chain, tmp_path):
     sign_chain(seeded_chain.timeline_path)
-    res = verify_chain_signature(seeded_chain.timeline_path)
-    if not res["valid"]:
-        print("DEBUG tamper verify reason:", res)
-    assert res["valid"] is True
+    assert verify_chain_signature(seeded_chain.timeline_path)["valid"] is True
 
     # Mutar un byte de un registro existente (append-only violado -> tamper).
     tl = seeded_chain.timeline_path

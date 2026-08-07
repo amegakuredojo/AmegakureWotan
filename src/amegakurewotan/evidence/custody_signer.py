@@ -119,10 +119,15 @@ def _pubkey_sha256(key_path: Path) -> str:
 
 
 def _openssl_sign(key_path: Path, digest_hex: str) -> str:
-    """Firma Ed25519 (rawin) del digest. Devuelve hex de la firma."""
+    """Firma Ed25519 (rawin) de los bytes crudos del digest SHA-512.
+
+    EdDSA no admite digest explícito, así que firmamos el mensaje crudo: los
+    64 bytes del SHA-512. Portable en OpenSSL >=3.0.
+    """
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, mode="w") as tf:
-        tf.write(digest_hex)
+    digest_bytes = bytes.fromhex(digest_hex)
+    with tempfile.NamedTemporaryFile(delete=False) as tf:
+        tf.write(digest_bytes)
         datafile = tf.name
     try:
         proc = subprocess.run(
@@ -141,12 +146,13 @@ def _openssl_sign(key_path: Path, digest_hex: str) -> str:
 
 def _openssl_verify(key_path: Path, digest_hex: str, sig_hex: str) -> bool:
     import tempfile
-    with tempfile.NamedTemporaryFile(delete=False, mode="w") as df:
-        df.write(digest_hex)
+    digest_bytes = bytes.fromhex(digest_hex)
+    with tempfile.NamedTemporaryFile(delete=False) as df:
+        df.write(digest_bytes)
         datafile = df.name
-    with tempfile.NamedTemporaryFile(delete=False) as tf:
-        tf.write(bytes.fromhex(sig_hex))
-        sigfile = tf.name
+    with tempfile.NamedTemporaryFile(delete=False) as sf:
+        sf.write(bytes.fromhex(sig_hex))
+        sigfile = sf.name
     try:
         proc = subprocess.run(
             ["openssl", "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", str(key_path),

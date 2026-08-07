@@ -4,14 +4,14 @@
  Container karasu-searxng Started 
  Container karasu-neo4j Waiting 
  Container karasu-neo4j Healthy 
- Container karasugakure-karasu-run-31c55493a34a Creating 
- Container karasugakure-karasu-run-31c55493a34a Created 
+ Container amegakurewotan-amewotan-run-31c55493a34a Creating 
+ Container amegakurewotan-amewotan-run-31c55493a34a Created 
 ╔══════════════════════════════════════════════╗
 ║     KARASUGAKURE — OSINT HARNESS BOOTSTRAP   ║
 ╚══════════════════════════════════════════════╝
-[BOOT] Starting Karasugakure Core with Kùzu embedded GraphDB...
+[BOOT] Starting AmegakureWotan Core with Kùzu embedded GraphDB...
 [BOOT] Verifying Tor SOCKS5 proxy at tor-proxy:9150...
-[BOOT] Initializing Karasugakure data directories...
+[BOOT] Initializing AmegakureWotan data directories...
 [BOOT] Data directories initialized at: /tmp/karasu_data
 [BOOT] Connecting to database and running graph schema migrations...
 [BOOT] Graph database connection established & schema migrations applied.
@@ -20,10 +20,10 @@
 [BOOT] Running smoke test suite...
 === KARASUGAKURE OSINT FORENSIC SMOKE TEST SUITE ===
 
-[RUNNING] python3 -m karasugakure.cli init
+[RUNNING] python3 -m amegakurewotan.cli init
 [SUCCESS]
 
-[RUNNING] python3 -m karasugakure.cli orchestrate testtarget.com
+[RUNNING] python3 -m amegakurewotan.cli orchestrate testtarget.com
 [FAILED] Exit code: 1
 [STDOUT]
 Initializing LangGraph dojo orchestration harness for target: testtarget.com...
