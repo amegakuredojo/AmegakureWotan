@@ -14,6 +14,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   test:
@@ -67,9 +68,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
           python -m pip install pytest-timeout
-      - name: CLI — init + forensic sign/verify + hitl list
+      - name: CLI — dispatch + forensic sign/verify + hitl list
         run: |
-          python -m amegakurewotan.cli_wotan init
           python -m amegakurewotan.cli_wotan mcp dispatch defense.phishing_detect --args '{"subject":"examp1e.com","params":{}}'
           python -m amegakurewotan.cli_wotan forensic sign
           python -m amegakurewotan.cli_wotan forensic verify-sign
