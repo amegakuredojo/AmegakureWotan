@@ -2,8 +2,8 @@ import pytest
 import os
 import hashlib
 from pathlib import Path
-from karasugakure.agents.skadi import SkadiAgent
-from karasugakure.config import get_config
+from amegakurewotan.agents.skadi import SkadiAgent
+from amegakurewotan.config import get_config
 
 def test_skadi_write_read_cycle():
     """Tests SkadiAgent write/read back cycle and checks returned manifest."""

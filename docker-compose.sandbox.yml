@@ -4,52 +4,52 @@
 # FORGE_DATE: 2026-07-05T15:43:00Z
 #
 # USO:
-#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml run --rm -i karasu run
+#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml run --rm -i amegakurewotan run
 #
-# Este override adapta Karasugakure para ejecutarse en entornos Sandbox
+# Este override adapta AmegakureWotan para ejecutarse en entornos Sandbox
 # donde NO hay contenedor tor-proxy ni searxng disponibles.
 # Útil para: AmegakureSandboxes, CI/CD, testing aislado, desarrollo local.
 
-name: karasugakure
+name: amegakurewotan
 
 services:
   # ── SANDBOX: Karasu Core sin dependencias de Tor/SearXNG ──────────────────
-  karasu:
+  amegakurewotan:
     # Override de red: en sandbox usamos red del host o red bridge simple
     network_mode: bridge
     networks: []
     depends_on: []  # Sin dependencias — no necesita tor-proxy ni searxng
     environment:
       # SANDBOX MODE: Tor bypass activado — kill switch desactivado
-      KARASU_OPSEC_BYPASS_TOR: "true"
+      AMEWOTAN_OPSEC_BYPASS_TOR: "true"
       # SearXNG: puede apuntar a una instancia externa o dejarse vacío
       SEARXNG_URL: "${SANDBOX_SEARXNG_URL:-http://localhost:8080/search}"
       # Kùzu: usar path configurable por sesión (persistencia opcional)
-      KUZU_DATABASE_PATH: "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}/karasu_vault.kuzu"
-      KARASU_DATA_DIR: "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}"
+      KUZU_DATABASE_PATH: "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}/amegakurewotan_vault.kuzu"
+      AMEWOTAN_DATA_DIR: "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}"
       # Bootstrap silencioso en sandbox
-      KARASU_SILENT_BOOTSTRAP: "true"
-      KARASU_MCP_TOR_TIMEOUT: "3"  # Timeout mínimo — Tor no disponible
+      AMEWOTAN_SILENT_BOOTSTRAP: "true"
+      AMEWOTAN_MCP_TOR_TIMEOUT: "3"  # Timeout mínimo — Tor no disponible
     volumes:
       # Override de volúmenes: usar directorio del host en vez de volumen named
-      - "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}:/data:rw"
+      - "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}:/data:rw"
     # Sin restricciones de cap_drop en sandbox para máxima compatibilidad
     cap_drop: []
 
   # ── SANDBOX MCP: Versión MCP para sandboxes ────────────────────────────────
-  karasu-mcp:
+  amegakurewotan-mcp:
     network_mode: bridge
     networks: []
     depends_on: []
     profiles:
       - sandbox-mcp
     environment:
-      KARASU_OPSEC_BYPASS_TOR: "true"
+      AMEWOTAN_OPSEC_BYPASS_TOR: "true"
       SEARXNG_URL: "${SANDBOX_SEARXNG_URL:-http://localhost:8080/search}"
-      KUZU_DATABASE_PATH: "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}/karasu_vault.kuzu"
-      KARASU_DATA_DIR: "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}"
-      KARASU_SILENT_BOOTSTRAP: "true"
-      KARASU_MCP_TOR_TIMEOUT: "3"
+      KUZU_DATABASE_PATH: "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}/amegakurewotan_vault.kuzu"
+      AMEWOTAN_DATA_DIR: "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}"
+      AMEWOTAN_SILENT_BOOTSTRAP: "true"
+      AMEWOTAN_MCP_TOR_TIMEOUT: "3"
     volumes:
-      - "${SANDBOX_DATA_PATH:-/tmp/karasu_sandbox}:/data:rw"
+      - "${SANDBOX_DATA_PATH:-/tmp/amegakurewotan_sandbox}:/data:rw"
     cap_drop: []

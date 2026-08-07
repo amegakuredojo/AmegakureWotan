@@ -7,12 +7,12 @@ from pathlib import Path
 
 # Paths inside Docker container
 BASE_DIR = Path("/app")
-DATA_DIR = Path(os.environ.get("KARASU_DATA_DIR", "/data"))
+DATA_DIR = Path(os.environ.get("AMEWOTAN_DATA_DIR", "/data"))
 SESSIONS_DIR = DATA_DIR / "sessions"
 REPORTS_DIR = DATA_DIR / "reports"
 
 def run_cmd(args):
-    cmd = ["python3", "-m", "karasugakure.cli"] + args
+    cmd = ["python3", "-m", "amegakurewotan.cli"] + args
     print(f"\n[RUNNING] {' '.join(cmd)}")
     res = subprocess.run(cmd, capture_output=True, text=True, cwd=str(BASE_DIR))
     if res.returncode != 0:
@@ -24,7 +24,7 @@ def run_cmd(args):
     return True, res.stdout, res.stderr
 
 def main():
-    print("=== KARASUGAKURE OSINT FORENSIC SMOKE TEST SUITE ===")
+    print("=== AMEWOTANGAKURE OSINT FORENSIC SMOKE TEST SUITE ===")
     
     # 1. Initialize environments
     success, stdout, _ = run_cmd(["init"])
@@ -153,7 +153,7 @@ def main():
             sys.exit(1)
         
     print("\n[+] ALL SMOKE TESTS COMPLETED SUCCESSFULLY!")
-    print("[+] Karasugakure is fully operational and forensics compliant.")
+    print("[+] AmegakureWotan is fully operational and forensics compliant.")
 
 if __name__ == "__main__":
     main()

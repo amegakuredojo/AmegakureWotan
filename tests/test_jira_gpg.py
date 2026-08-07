@@ -8,7 +8,7 @@ JIRA_URL = "https://amegakuredojo.atlassian.net"
 PROJECT_KEY = "AMDC2"
 
 def load_credentials():
-    creds_path = "/home/lugh/.karasugakure/opsec/credentials.json.gpg"
+    creds_path = "/home/lugh/.amegakurewotan/opsec/credentials.json.gpg"
     if not os.path.exists(creds_path):
         raise FileNotFoundError(f"Encrypted credentials file not found at {creds_path}")
         
@@ -62,7 +62,7 @@ def upload_to_jira():
                 "project": {
                     "key": PROJECT_KEY
                 },
-                "summary": "Karasugakure Forensic OSINT Deployment Documentation",
+                "summary": "AmegakureWotan Forensic OSINT Deployment Documentation",
                 "description": {
                     "type": "doc",
                     "version": 1,
@@ -72,7 +72,7 @@ def upload_to_jira():
                             "content": [
                                 {
                                     "type": "text",
-                                    "text": "Attachment of approved Karasugakure OSINT Deployment and Operational runbooks."
+                                    "text": "Attachment of approved AmegakureWotan OSINT Deployment and Operational runbooks."
                                 }
                             ]
                         }

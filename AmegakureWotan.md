@@ -2,14 +2,14 @@
 
 ## 1. Objetivo y alcance
 
-AmegakureWotan es la consolidación doctrinal e industrial de los proyectos Karasugakure y SENTINEL‑OSINT en una sola plataforma de inteligencia de fuentes abiertas (OSINT) y respuesta forense de grado militar, diseñada para operar bajo la doctrina y protocolos de AmegakureDojo. El sistema se orienta a hardware edge de bajo consumo (Intel N100, 8GB RAM) y entornos industriales con requisitos de alta trazabilidad, cadena de custodia legalmente defendible y controles estrictos de OPSEC, reduciendo al mínimo el uso de SaaS externos y manteniendo una superficie de ataque compacta.[^1]
+AmegakureWotan es la consolidación doctrinal e industrial de los proyectos AmegakureWotan y SENTINEL‑OSINT en una sola plataforma de inteligencia de fuentes abiertas (OSINT) y respuesta forense de grado militar, diseñada para operar bajo la doctrina y protocolos de AmegakureDojo. El sistema se orienta a hardware edge de bajo consumo (Intel N100, 8GB RAM) y entornos industriales con requisitos de alta trazabilidad, cadena de custodia legalmente defendible y controles estrictos de OPSEC, reduciendo al mínimo el uso de SaaS externos y manteniendo una superficie de ataque compacta.[^1]
 
 La plataforma elimina explícitamente cualquier capacidad de ingeniería social ofensiva: ni generación de pretextos, ni plantillas de phishing, ni contenido persuasivo dirigido a humanos; solo se permite ingeniería social defensiva (detección de phishing, correlación de campañas contra la organización, huella digital expuesta del personal) y operaciones OSINT/DFIR dentro de Reglas de Empeño (RoE) firmadas. A diferencia de frameworks OSINT generalistas, AmegakureWotan prioriza gobernanza (GELSI), cadena de custodia HMAC‑SHA512, OPSEC duro (Tor, proxies, evasión bajo RoE) y acoplamiento con marcos regulatorios como eIDAS y GDPR.[^1]
 
 
 ## 2. Renombrado de proyecto y doctrina Odin en Hermes
 
-El proyecto Karasugakure se renombra formalmente a **AmegakureWotan**, manteniendo su núcleo técnico (grafo embebido, contenedores, ledger) pero alineando el branding con la visión consolidada y el rol de Wotan/Odin como autoridad de mando y visión estratégica. Odin deja de ser un orquestador autónomo aislado y pasa a constituir el **perfil doctrinal** de Hermes Agent: las reglas de Odin se implementan como configuración inicial de Hermes (prompt de sistema, restricciones, estilos de planificación, límites operacionales), de forma que cualquier sesión de Hermes en este ecosistema nace ya con la doctrina de AmegakureDojo integrada.[^1]
+El proyecto AmegakureWotan se renombra formalmente a **AmegakureWotan**, manteniendo su núcleo técnico (grafo embebido, contenedores, ledger) pero alineando el branding con la visión consolidada y el rol de Wotan/Odin como autoridad de mando y visión estratégica. Odin deja de ser un orquestador autónomo aislado y pasa a constituir el **perfil doctrinal** de Hermes Agent: las reglas de Odin se implementan como configuración inicial de Hermes (prompt de sistema, restricciones, estilos de planificación, límites operacionales), de forma que cualquier sesión de Hermes en este ecosistema nace ya con la doctrina de AmegakureDojo integrada.[^1]
 
 Esto permite que Hermes funcione como "Wotan externo" (kernel de orquestación) mientras que la lógica de agentes internos de AmegakureWotan (Heimdall, Huginn, Tyr, Hel, Odin, Mimir) se conserva sin cambios semánticos, simplemente re‑anclada a subagentes Hermes con los mismos nombres y misiones. El resultado es que la identidad y protocolos de AmegakureDojo no se diluyen al adoptar Hermes, sino que Hermes se convierte en el vehículo para aplicarlos de forma sistemática a todo motor OSINT/DFIR conectado.
 
@@ -25,13 +25,13 @@ El diseño de AmegakureWotan adopta una **flexibilidad acotada**: para tareas de
 
 ### 4.1 Capas globales
 
-La arquitectura de AmegakureWotan se organiza en seis capas, consolidando Karasugakure y SENTINEL‐OSINT en un solo MCP OSINT/DFIR de siguiente generación.
+La arquitectura de AmegakureWotan se organiza en seis capas, consolidando AmegakureWotan y SENTINEL‐OSINT en un solo MCP OSINT/DFIR de siguiente generación.
 
 1. **L0 – Gobernanza y Cumplimiento (GELSI global)**  
    Middleware obligatorio entre Hermes y cualquier herramienta/tarea, que evalúa RoE, jurisdicción, categoría de acción (pasiva/activa/evasiva), PII bajo GDPR y presencia de contenido de ingeniería social ofensiva.[^1] Emite decisiones `ALLOW | DENY | REQUIRE_HITL` y las encadena en `timeline.jsonl` mediante `forensics.py`, con referencias a `roe_id` y justificación auditable.[^1]
 
 2. **L1 – Orquestación Agentica (Hermes/Odin)**  
-   Hermes Agent actúa como orquestador raíz, con un perfil doctrinal Odin que define: estilo de planificación, límite de delegaciones, reglas de mínima superficie, prohibición de contenido ofensivo y prioridad de evidencias sobre "intuiciones" del modelo. Hermes crea subagentes con los nombres ya usados en Karasugakure (Heimdall, Huginn, Tyr, Hel, Mimir, etc.), mapeados a skills y herramientas MCP de AmegakureWotan.[^1]
+   Hermes Agent actúa como orquestador raíz, con un perfil doctrinal Odin que define: estilo de planificación, límite de delegaciones, reglas de mínima superficie, prohibición de contenido ofensivo y prioridad de evidencias sobre "intuiciones" del modelo. Hermes crea subagentes con los nombres ya usados en AmegakureWotan (Heimdall, Huginn, Tyr, Hel, Mimir, etc.), mapeados a skills y herramientas MCP de AmegakureWotan.[^1]
 
 3. **L2 – MCP único de AmegakureWotan**  
    Un **servidor MCP consolidado** expone las capacidades OSINT/DFIR como herramientas tipadas, combinando el diseño del MCP OSINT de SENTINEL con el motor interno de AmegakureWotan. No se exponen múltiples MCP separados: desde Hermes todo se ve como `amegakurewotan.mcp` con diferentes herramientas (`recon.passive_scan`, `karasu.graph_query`, `dfir.velociraptor_hunt`, etc.).[^1]
@@ -43,7 +43,7 @@ La arquitectura de AmegakureWotan se organiza en seis capas, consolidando Karasu
    Neo4j Community como grafo central para Graph‑RAG, Kùzu como grafo embebido de AmegakureWotan para consultas locales y pipelines específicos de análisis de relaciones, y un vector store ligero (SQLite+FAISS) para embeddings cuando sea necesario. Esta capa evita la alucinación de vulnerabilidades o relaciones inexistentes: las respuestas del LLM se basan en consultas explícitas al grafo.[^1]
 
 6. **L5 – Interfaces de Operador e Integración Industrial**  
-   TUI de AmegakureWotan (heredada de Karasugakure), CLI `karasu`/`amewotan`, dashboards de SOC/DFIR, integraciones con SIEM/SOAR y QTSP eIDAS para anclaje de cadena de custodia. No se exponen paneles web públicos; cualquier UI web se aloja en redes restringidas.[^1]
+   TUI de AmegakureWotan (heredada de AmegakureWotan), CLI `karasu`/`amewotan`, dashboards de SOC/DFIR, integraciones con SIEM/SOAR y QTSP eIDAS para anclaje de cadena de custodia. No se exponen paneles web públicos; cualquier UI web se aloja en redes restringidas.[^1]
 
 
 ### 4.2 Módulos funcionales principales
@@ -82,7 +82,7 @@ El archivo `timeline.jsonl` es append‑only, con `fsync` sincrono tras cada esc
 
 ### 5.2 Integración del ledger de AmegakureWotan
 
-El "Forensic Audit Ledger" original de Karasugakure se adapta para convertirse en un **frontend** del `timeline.jsonl` global: sus operaciones de hash HMAC‑SHA512 se implementan llamando al módulo `forensics.py`, de forma que no existan dos cadenas paralelas. El CLI `karasu audit verify` se mapea a `ChainOfCustody.verify_chain`, y los comandos `karasu orchestrate`, `karasu export`, `karasu darkweb` y otros generan eventos con `collector_id="karasu-agent"` o similares, asegurando trazabilidad cruzada con el resto de la plataforma.[^1]
+El "Forensic Audit Ledger" original de AmegakureWotan se adapta para convertirse en un **frontend** del `timeline.jsonl` global: sus operaciones de hash HMAC‑SHA512 se implementan llamando al módulo `forensics.py`, de forma que no existan dos cadenas paralelas. El CLI `karasu audit verify` se mapea a `ChainOfCustody.verify_chain`, y los comandos `karasu orchestrate`, `karasu export`, `karasu darkweb` y otros generan eventos con `collector_id="karasu-agent"` o similares, asegurando trazabilidad cruzada con el resto de la plataforma.[^1]
 
 Para análisis internos rápidos, AmegakureWotan puede mantener índices adicionales del ledger (por ejemplo, en SQLite o Kùzu), pero estos se consideran derivados; el registro probatorio oficial siempre es `timeline.jsonl` bajo `forensics.py` con anclaje opcional a eIDAS/RFC 3161 por lote.[^1]
 
@@ -96,7 +96,7 @@ La cadena de custodia se alinea con eIDAS (sellado de tiempo cualificado, presun
 
 ### 6.1 Diseño general
 
-Se implementa un único servidor MCP, por ejemplo `amegakurewotan_mcp_server`, que expone todas las capacidades OSINT/DFIR del ecosistema. Hermes lo ve como un solo endpoint MCP; la separación entre Karasugakure/AmegakureWotan, BBOT, Axiom, Velociraptor, etc. está encapsulada detrás de los handlers de herramientas.[^1]
+Se implementa un único servidor MCP, por ejemplo `amegakurewotan_mcp_server`, que expone todas las capacidades OSINT/DFIR del ecosistema. Hermes lo ve como un solo endpoint MCP; la separación entre AmegakureWotan/AmegakureWotan, BBOT, Axiom, Velociraptor, etc. está encapsulada detrás de los handlers de herramientas.[^1]
 
 El servidor se organiza por dominios lógicos:
 
@@ -178,7 +178,7 @@ Cada una de estas herramientas debe ejecutar binarios en contenedores aislados, 
 
 ### 7.1 Mapeo de agentes existentes a Hermes
 
-Los agentes ya definidos en Karasugakure se preservan y mapean directamente a subagentes Hermes con el mismo nombre y objetivo.
+Los agentes ya definidos en AmegakureWotan se preservan y mapean directamente a subagentes Hermes con el mismo nombre y objetivo.
 
 - **Heimdall — Digital Reconnaissance & Perimeter Mapping**  
   Encargado de reconocimiento técnico: usa las herramientas MCP `recon.*` para mapear superficie de ataque, enumerar dominios/IPs, servicios y certificados. En la práctica, orquesta Amass, theHarvester, Nuclei, SpiderFoot (módulos de DNS/WHOIS) y BBOT/Axiom según recursos y RoE.[^2][^1]
@@ -250,7 +250,7 @@ El comportamiento deseado en la primera instalación de AmegakureWotan es ejecut
 5. Inicializa Neo4j, Kùzu, Velociraptor (opcional) y otros servicios con configuración hardened.[^5][^3][^1]
 6. Ejecuta pruebas smoke para verificar que cada herramienta responde correctamente a comandos de ejemplo y que `ChainOfCustody.verify_chain` pasa con éxito tras los primeros eventos de instalación.[^1]
 
-La instalación se expone mediante un wrapper (`install.sh`) similar al existente en Karasugakure, pero extendido para cubrir la nueva lista de dependencias y servicios. 
+La instalación se expone mediante un wrapper (`install.sh`) similar al existente en AmegakureWotan, pero extendido para cubrir la nueva lista de dependencias y servicios. 
 
 
 ## 9. Diseño de comportamiento determinista vs flexible
@@ -310,7 +310,7 @@ El conjunto de pruebas descrito en SENTINEL se extiende para cubrir las nuevas h
 
 ## 11. Conclusión operativa
 
-AmegakureWotan consolida Karasugakure y SENTINEL‑OSINT en un único ecosistema OSINT/DFIR de grado militar‑forense, manteniendo los nombres y roles de agentes ya definidos, adoptando la cadena de custodia encadenada HMAC‑SHA512 de SENTINEL como estándar global, y usando Hermes Agent como kernel de orquestación bajo la doctrina de Odin/AmegakureDojo. La plataforma integra de forma disciplinada herramientas industriales como Maltego CE, Shodan, SpiderFoot, Nuclei, Velociraptor, Volatility y Sleuth Kit, encapsulándolas tras un MCP consolidado y reforzando tanto la trazabilidad forense como la alineación con marcos legales y de cumplimiento contemporáneos.[^7][^5][^3][^2][^1]
+AmegakureWotan consolida AmegakureWotan y SENTINEL‑OSINT en un único ecosistema OSINT/DFIR de grado militar‑forense, manteniendo los nombres y roles de agentes ya definidos, adoptando la cadena de custodia encadenada HMAC‑SHA512 de SENTINEL como estándar global, y usando Hermes Agent como kernel de orquestación bajo la doctrina de Odin/AmegakureDojo. La plataforma integra de forma disciplinada herramientas industriales como Maltego CE, Shodan, SpiderFoot, Nuclei, Velociraptor, Volatility y Sleuth Kit, encapsulándolas tras un MCP consolidado y reforzando tanto la trazabilidad forense como la alineación con marcos legales y de cumplimiento contemporáneos.[^7][^5][^3][^2][^1]
 
 Este documento sirve como contrato de arquitectura para los agentes Amegakure encargados de la implementación: cada sección puede convertirse en un módulo, playbook o test suite, asegurando que el código resultante respete la doctrina, minimice superficie de ataque y maximice el valor probatorio de toda operación de inteligencia y respuesta.
 

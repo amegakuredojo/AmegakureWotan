@@ -1,9 +1,9 @@
-# docker-compose.yml — Despliegue de Producción Hardened de Karasugakure
+# docker-compose.yml — Despliegue de Producción Hardened de AmegakureWotan
 # FORGE_CONTEXT: CIVIL
 # FORGE_VERSION: 3.0
 # FORGE_DATE: 2026-07-06T00:48:00Z
 
-name: karasugakure
+name: amegakurewotan
 
 # ─── REDES AISLADAS ─────────────────────────────────────────────────────────
 networks:
@@ -78,15 +78,15 @@ services:
       - ./docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
 
   # ── KARASU CORE: Framework Engine (uso interactivo / CLI) ──────────────────
-  karasu:
+  amegakurewotan:
     build:
       context: .
       dockerfile: Dockerfile
       target: runtime
       args:
-        IMAGE_BUILD_HASH: "${KARASU_IMAGE_HASH:-dev}"
+        IMAGE_BUILD_HASH: "${AMEWOTAN_IMAGE_HASH:-dev}"
         BUILD_DATE: "${BUILD_DATE:-unknown}"
-    image: karasugakure/karasu:latest
+    image: amegakurewotan/amewotan:latest
     container_name: karasu-core
     restart: "no"
     networks:
@@ -105,13 +105,13 @@ services:
       OPSEC_TOR_CONTROL_PORT: "9051"
       TOR_HOST: "172.28.0.20"
       TOR_PORT: "9150"
-      KARASU_DATA_DIR: "/data"
+      AMEWOTAN_DATA_DIR: "/data"
       PYTHONPATH: "/app/src"
-      KARASU_RUN_SMOKE_TEST: "${KARASU_RUN_SMOKE_TEST:-false}"
+      AMEWOTAN_RUN_SMOKE_TEST: "${AMEWOTAN_RUN_SMOKE_TEST:-false}"
       KARASU_ISOLATION_TIMEOUT: "${KARASU_ISOLATION_TIMEOUT:-120}"
       KARASU_KEY_ROTATION_DAYS: "${KARASU_KEY_ROTATION_DAYS:-30}"
       SEARXNG_URL: "http://172.28.0.50:8080/search"
-      KARASU_OPSEC_BYPASS_TOR: "${KARASU_OPSEC_BYPASS_TOR:-false}"
+      AMEWOTAN_OPSEC_BYPASS_TOR: "${AMEWOTAN_OPSEC_BYPASS_TOR:-false}"
     volumes:
       - evidence_vault:/data
       - karasu_sessions:/data/sessions
@@ -133,8 +133,8 @@ services:
   # Uso: docker compose run --rm -i --no-TTY karasu-mcp run
   # Este servicio está optimizado para MCP: bootstrap silencioso, timeout Tor
   # reducido a 10s, y no fuerza dependencias (se asume stack ya levantado).
-  karasu-mcp:
-    image: karasugakure/karasu:latest
+  amegakurewotan-mcp:
+    image: amegakurewotan/amewotan:latest
     container_name: karasu-mcp
     restart: "no"
     profiles:
@@ -150,14 +150,14 @@ services:
       OPSEC_TOR_CONTROL_PORT: "9051"
       TOR_HOST: "172.28.0.20"
       TOR_PORT: "9150"
-      KARASU_DATA_DIR: "/data"
+      AMEWOTAN_DATA_DIR: "/data"
       PYTHONPATH: "/app/src"
-      KARASU_SILENT_BOOTSTRAP: "true"        # Suprime banners → no contamina JSON-RPC
-      KARASU_MCP_TOR_TIMEOUT: "10"           # Máx 10s esperando Tor en modo MCP
+      AMEWOTAN_SILENT_BOOTSTRAP: "true"        # Suprime banners → no contamina JSON-RPC
+      AMEWOTAN_MCP_TOR_TIMEOUT: "10"           # Máx 10s esperando Tor en modo MCP
       KARASU_ISOLATION_TIMEOUT: "${KARASU_ISOLATION_TIMEOUT:-120}"
       KARASU_KEY_ROTATION_DAYS: "${KARASU_KEY_ROTATION_DAYS:-30}"
       SEARXNG_URL: "http://172.28.0.50:8080/search"
-      KARASU_OPSEC_BYPASS_TOR: "${KARASU_OPSEC_BYPASS_TOR:-false}"
+      AMEWOTAN_OPSEC_BYPASS_TOR: "${AMEWOTAN_OPSEC_BYPASS_TOR:-false}"
     volumes:
       - evidence_vault:/data
       - karasu_sessions:/data/sessions

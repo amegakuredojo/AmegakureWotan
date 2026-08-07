@@ -1,6 +1,6 @@
 import pytest
 import time
-from karasugakure.agents.tyr import TyrAgent
+from amegakurewotan.agents.tyr import TyrAgent
 
 def test_tyr_floor_fail():
     """Verify source agent score below floor fails validation."""

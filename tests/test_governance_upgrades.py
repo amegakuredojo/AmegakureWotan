@@ -2,11 +2,11 @@ import pytest
 import os
 import tempfile
 from pathlib import Path
-from karasugakure.config import get_config
-from karasugakure.policy.state import FindingStateMachine, DualApprovalRegistry, StateTransitionError
-from karasugakure.policy.interfaces import InterfaceFreezePolicy
-from karasugakure.policy.adr import ADRRegistry
-from karasugakure.policy.rollback import ReleaseTrainManager
+from amegakurewotan.config import get_config
+from amegakurewotan.policy.state import FindingStateMachine, DualApprovalRegistry, StateTransitionError
+from amegakurewotan.policy.interfaces import InterfaceFreezePolicy
+from amegakurewotan.policy.adr import ADRRegistry
+from amegakurewotan.policy.rollback import ReleaseTrainManager
 
 @pytest.fixture(autouse=True)
 def mock_config_base_dir(tmp_path, monkeypatch):

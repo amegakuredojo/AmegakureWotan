@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Karasugakure pi-osint wrapper
+# AmegakureWotan pi-osint wrapper
 # Runs the custom fork of Pi Agent using bun
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

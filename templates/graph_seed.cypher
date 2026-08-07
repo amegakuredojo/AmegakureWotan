@@ -1,4 +1,4 @@
-// Initial Schema Setup for Karasugakure Graph
+// Initial Schema Setup for AmegakureWotan Graph
 CREATE CONSTRAINT unique_entity_value IF NOT EXISTS
 FOR (e:Entity) REQUIRE e.value IS UNIQUE;
 

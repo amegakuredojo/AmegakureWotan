@@ -8,13 +8,13 @@ Cubre:
   • deny_hitl() resuelve el ticket como DENIED y lo sella en la cadena.
   • approve_hitl() re-ejecuta SOLO vía gateway (GELSI re-evalúa sin puerta HITL
     pero mantiene veto DENY y validación de scope/RoE).
-  • El MCP server (KarasugakureMCP) gobierna TODA tool: darkweb sin RoE => DENY,
+  • El MCP server (AmegakureWotanMCP) gobierna TODA tool: darkweb sin RoE => DENY,
     y una tool en REQUIRE_HITL levanta ticket HITL (cierre del bypass histórico).
   • Idempotencia: un ticket ya resuelto no se puede re-resolver.
 """
 import pytest
 
-from karasugakure.policy.roe import (
+from amegakurewotan.policy.roe import (
     ACTION_ACTIVE,
     ACTION_DARKWEB,
     ACTION_DFIR,
@@ -23,10 +23,10 @@ from karasugakure.policy.roe import (
     get_scope_registry,
     reset_scope_registry,
 )
-from karasugakure.policy.gelsi import get_gelsi, reset_gelsi
-from karasugakure.policy.hitl import get_hitl, reset_hitl
-from karasugakure.mcp.gateway import get_gateway, reset_gateway
-from karasugakure.evidence.forensics import ChainOfCustody, canonical_json, sha512_bytes
+from amegakurewotan.policy.gelsi import get_gelsi, reset_gelsi
+from amegakurewotan.policy.hitl import get_hitl, reset_hitl
+from amegakurewotan.mcp.gateway import get_gateway, reset_gateway
+from amegakurewotan.evidence.forensics import ChainOfCustody, canonical_json, sha512_bytes
 
 
 @pytest.fixture(autouse=True)
@@ -91,7 +91,7 @@ def test_gateway_hitl_deny_seals_and_blocks(tmp_path):
     assert denied.decision == "DENY"
     assert denied.hitl_state == "DENIED"
     # El ticket queda DENIED y nada se ejecutó (no hay op.completed para este ticket).
-    from karasugakure.policy.hitl import get_hitl
+    from amegakurewotan.policy.hitl import get_hitl
 
     assert get_hitl().get(ticket_id).state.value == "DENIED"
     # Re-resolver el mismo ticket debe fallar (idempotencia).
@@ -142,7 +142,7 @@ def test_gateway_hitl_approve_in_scope_runs_handler(tmp_path, monkeypatch):
 
 def test_mcp_server_govern_denies_darkweb_without_roe(tmp_path):
     # Sin RoE => darkweb debe DENY (cierre del bypass histórico del server).
-    from karasugakure.mcp import server as mcp_server
+    from amegakurewotan.mcp import server as mcp_server
 
     decision, payload = mcp_server._govern("hel_darkweb", {"query": "leak@example.com"})
     assert decision == "DENY"
@@ -151,7 +151,7 @@ def test_mcp_server_govern_denies_darkweb_without_roe(tmp_path):
 
 def test_mcp_server_govern_darkweb_with_roe_creates_hitl(tmp_path):
     _register_dfir_roe()
-    from karasugakure.mcp import server as mcp_server
+    from amegakurewotan.mcp import server as mcp_server
 
     decision, payload = mcp_server._govern(
         "hel_darkweb", {"query": "leak@host-01.target.com", "roe_token": "roe-dfir-f5"},
@@ -165,7 +165,7 @@ def test_mcp_server_govern_darkweb_with_roe_creates_hitl(tmp_path):
 
 
 def test_mcp_server_govern_passive_requires_no_roe(tmp_path):
-    from karasugakure.mcp import server as mcp_server
+    from amegakurewotan.mcp import server as mcp_server
 
     # Recon pasivo sin RoE => ALLOW (recon pasivo no exige RoE según GELSI).
     decision, payload = mcp_server._govern("searxng_recon", {"query": "test"})

@@ -4,8 +4,8 @@ import hmac
 import hashlib
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from karasugakure.agents.heimdall import HeimdallAgent
-from karasugakure.config import get_config
+from amegakurewotan.agents.heimdall import HeimdallAgent
+from amegakurewotan.config import get_config
 
 @pytest.fixture(autouse=True)
 def mock_config_base_dir(tmp_path, monkeypatch):
@@ -47,7 +47,7 @@ def test_heimdall_cache_verification(tmp_path):
     agent.cache_file.write_text(json.dumps(cache_payload, indent=2))
     
     # Execute with valid cache
-    with patch("karasugakure.adapters.web.WebAdapter.fetch_page", return_value=None):
+    with patch("amegakurewotan.adapters.web.WebAdapter.fetch_page", return_value=None):
         res = agent.execute(target)
         assert res["subdomains"] == [f"admin.{target}"]
         assert res["source"] == "heimdall"
@@ -64,7 +64,7 @@ def test_heimdall_cache_verification(tmp_path):
     
     # Execute with corrupted cache
     dummy_html = "<html>fresh</html>"
-    with patch("karasugakure.adapters.web.WebAdapter.fetch_page", return_value=dummy_html), \
+    with patch("amegakurewotan.adapters.web.WebAdapter.fetch_page", return_value=dummy_html), \
          patch("subprocess.run") as mock_subproc:
          
         # Mock amass wrapper not being run

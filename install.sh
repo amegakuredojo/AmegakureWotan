@@ -3,7 +3,7 @@
 # FORGE_VERSION: 3.0
 # FORGE_DATE: 2026-07-05T15:43:00Z
 # ==============================================================================
-# Karasugakure - Installation & Bootstrap Script
+# AmegakureWotan - Installation & Bootstrap Script
 # ==============================================================================
 # This script initializes the project environment and creates a global CLI wrapper
 # for seamless execution without needing to prefix with `make` or `docker compose`.
@@ -65,7 +65,7 @@ else
 fi
 
 # 2. Build Docker Environment
-echo -e "\n${YELLOW}[*] Building Karasugakure secure containers (this may take a few minutes)...${NC}"
+echo -e "\n${YELLOW}[*] Building AmegakureWotan secure containers (this may take a few minutes)...${NC}"
 make build
 
 # 3. Create Global Wrapper
@@ -78,7 +78,7 @@ CURRENT_DIR=$(pwd)
 
 cat > "$WRAPPER_PATH" << 'EOF'
 #!/usr/bin/env bash
-# Karasugakure Global Wrapper
+# AmegakureWotan Global Wrapper
 PROJECT_DIR="CURRENT_DIR_PLACEHOLDER"
 cd "$PROJECT_DIR" || exit 1
 if [ "$1" == "shell" ] || [ "$1" == "test" ]; then
@@ -96,7 +96,7 @@ echo -e "${GREEN}[✔] Wrapper installed at $WRAPPER_PATH${NC}"
 
 # 4. Final Instructions
 echo -e "\n${BLUE}======================================================================${NC}"
-echo -e "${GREEN}Karasugakure is now fully operational!${NC}"
+echo -e "${GREEN}AmegakureWotan is now fully operational!${NC}"
 echo -e "You can now run the tool from ANYWHERE in your terminal using:"
 echo -e "  ${YELLOW}karasu --help${NC}"
 echo -e ""

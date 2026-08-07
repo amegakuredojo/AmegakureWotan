@@ -1,4 +1,4 @@
-# 🦅 Karasugakure (烏隠れ) — Advanced OSINT Forensic Graph Harness
+# 🦅 AmegakureWotan (烏隠れ) — Advanced OSINT Forensic Graph Harness
 
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)
@@ -6,7 +6,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)
 ![Database](https://img.shields.io/badge/GraphDB-K%C3%B9zu-yellow.svg)
 
-Karasugakure is a highly-secure, modular, and containerized **Open Source Intelligence (OSINT)** framework built for the shadows of the Amegakure Dojo. It executes stealthy automated intelligence gathering, correlates complex cyber-entities using an embedded **Kùzu Graph Database**, and maintains absolute cryptographic integrity of all findings through its **Forensic Audit Ledger**.
+AmegakureWotan is a highly-secure, modular, and containerized **Open Source Intelligence (OSINT)** framework built for the shadows of the Amegakure Dojo. It executes stealthy automated intelligence gathering, correlates complex cyber-entities using an embedded **Kùzu Graph Database**, and maintains absolute cryptographic integrity of all findings through its **Forensic Audit Ledger**.
 
 Designed with paramount **OPSEC** in mind, it routes all external reconnaissance through a self-healing **Tor SOCKS5 Proxy Network**, ensuring operator anonymity while investigating hostile targets, dark web assets, and corporate infrastructure.
 
@@ -30,7 +30,7 @@ Designed with paramount **OPSEC** in mind, it routes all external reconnaissance
 
 ## ⚡ Installation (Zero to OSINT in 60s)
 
-Karasugakure includes a seamless bootstrap installer that builds the secure Docker architecture and injects a global command wrapper into your system.
+AmegakureWotan includes a seamless bootstrap installer that builds the secure Docker architecture and injects a global command wrapper into your system.
 
 ### Prerequisites:
 - `git`
@@ -39,8 +39,8 @@ Karasugakure includes a seamless bootstrap installer that builds the secure Dock
 
 ### Setup:
 ```bash
-git clone https://github.com/amegakuredojo/Karasugakure.git
-cd Karasugakure
+git clone https://github.com/amegakuredojo/AmegakureWotan.git
+cd AmegakureWotan
 ./install.sh
 ```
 
@@ -50,7 +50,7 @@ cd Karasugakure
 
 ## ⚔️ Usage & Commands
 
-Once installed, Karasugakure acts as a native CLI tool. You do not need to be in the project folder to run it.
+Once installed, AmegakureWotan acts as a native CLI tool. You do not need to be in the project folder to run it.
 
 ### Core Orchestration
 Launch a full automated reconnaissance cycle against a target (Domain, IP, Persona):
@@ -96,7 +96,7 @@ karasu tui
 
 ## 🧪 Testing & CI
 
-Karasugakure features a robust test suite that validates OPSEC fail-safes, graph database consistency, NATO scoring algorithms, and audit tamper-detection.
+AmegakureWotan features a robust test suite that validates OPSEC fail-safes, graph database consistency, NATO scoring algorithms, and audit tamper-detection.
 
 To run the full suite (Smoke Tests + Pytest):
 ```bash

@@ -1,7 +1,7 @@
 import pytest
 import time
 from unittest.mock import patch, MagicMock
-from karasugakure.agents.hel import HelAgent
+from amegakurewotan.agents.hel import HelAgent
 
 def test_hel_allowlist_and_stale():
     """Verify that allowlist filters out rogue onions and stale onions are rejected."""
@@ -14,8 +14,8 @@ def test_hel_allowlist_and_stale():
     
     mock_html = "<html><head><title>Hacker Forum Leak DB</title></head><body>some email@test.com leak data</body></html>"
     
-    with patch("karasugakure.policy.opsec.check_tor_socks_proxy", return_value=True), \
-         patch("karasugakure.adapters.darkweb.DarkWebAdapter.query_onion", return_value=mock_html):
+    with patch("amegakurewotan.policy.opsec.check_tor_socks_proxy", return_value=True), \
+         patch("amegakurewotan.adapters.darkweb.DarkWebAdapter.query_onion", return_value=mock_html):
          
         # Execute HelAgent
         res = hel.execute("email@test.com")

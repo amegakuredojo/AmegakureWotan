@@ -2,7 +2,7 @@
 # FORGE_VERSION: 3.0
 # FORGE_DATE: 2026-07-05T15:43:00Z
 """
-conftest.py — Fixtures globales para test suite de Karasugakure.
+conftest.py — Fixtures globales para test suite de AmegakureWotan.
 FIX-06: Provee mocks de paths Docker, Tor proxy y SearXNG para ejecutar
 tests en host sin necesitar el stack Docker completo activo.
 
@@ -21,7 +21,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 # CONSTANTES DE TEST
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TEST_TARGET: str = "testtarget.example.com"
-TEST_USERNAME: str = "testuser_karasu"
+TEST_USERNAME: str = "testuser_amegakurewotan"
 TEST_QUERY: str = "site:testtarget.example.com filetype:pdf"
 
 
@@ -33,9 +33,9 @@ TEST_QUERY: str = "site:testtarget.example.com filetype:pdf"
 def tmp_data_dir(tmp_path_factory):
     """
     Directorio de datos temporal para toda la sesión de tests.
-    Reemplaza KARASU_DATA_DIR=/data del contenedor Docker.
+    Reemplaza AMEWOTAN_DATA_DIR=/data del contenedor Docker.
     """
-    data_dir = tmp_path_factory.mktemp("karasu_data")
+    data_dir = tmp_path_factory.mktemp("amegakurewotan_data")
     # Crear estructura de directorios esperada
     for subdir in [
         "evidence", "evidence/screenshots", "evidence/html",
@@ -49,15 +49,15 @@ def tmp_data_dir(tmp_path_factory):
 @pytest.fixture(autouse=True)
 def patch_data_dir(tmp_data_dir, monkeypatch):
     """
-    Auto-fixture: parchea KARASU_DATA_DIR en todos los tests.
+    Auto-fixture: parchea AMEWOTAN_DATA_DIR en todos los tests.
     Redirige paths Docker (/data) a directorio temporal del host.
     """
-    monkeypatch.setenv("KARASU_DATA_DIR", str(tmp_data_dir))
-    monkeypatch.setenv("KUZU_DATABASE_PATH", str(tmp_data_dir / "karasu_vault.kuzu"))
+    monkeypatch.setenv("AMEWOTAN_DATA_DIR", str(tmp_data_dir))
+    monkeypatch.setenv("KUZU_DATABASE_PATH", str(tmp_data_dir / "amegakurewotan_vault.kuzu"))
     # Forzar bypass Tor en tests (no hay contenedor tor-proxy)
-    monkeypatch.setenv("KARASU_OPSEC_BYPASS_TOR", "true")
+    monkeypatch.setenv("AMEWOTAN_OPSEC_BYPASS_TOR", "true")
     # Reset singleton de config para que tome los nuevos valores
-    import karasugakure.config as cfg_module
+    import amegakurewotan.config as cfg_module
     cfg_module._config = None
     yield
     # Cleanup: reset config singleton post-test
@@ -73,8 +73,8 @@ def mock_tor_proxy():
     Mock del Tor SOCKS5 proxy para tests que no requieren Tor real.
     Parchea check_tor_socks_proxy para retornar True siempre.
     """
-    with patch("karasugakure.policy.opsec.check_tor_socks_proxy", return_value=True):
-        with patch("karasugakure.policy.opsec.get_active_proxies",
+    with patch("amegakurewotan.policy.opsec.check_tor_socks_proxy", return_value=True):
+        with patch("amegakurewotan.policy.opsec.get_active_proxies",
                    return_value=["socks5h://127.0.0.1:9050"]):
             yield
 
@@ -82,8 +82,8 @@ def mock_tor_proxy():
 @pytest.fixture
 def mock_tor_proxy_down():
     """Mock del Tor proxy CAÍDO para tests de OPSEC enforcement."""
-    with patch("karasugakure.policy.opsec.check_tor_socks_proxy", return_value=False):
-        with patch("karasugakure.policy.opsec.get_active_proxies", return_value=[]):
+    with patch("amegakurewotan.policy.opsec.check_tor_socks_proxy", return_value=False):
+        with patch("amegakurewotan.policy.opsec.get_active_proxies", return_value=[]):
             yield
 
 
@@ -109,7 +109,7 @@ def mock_searxng():
             "score": 0.7,
         },
     ]
-    with patch("karasugakure.tools.searxng.query_searxng", return_value=fake_results):
+    with patch("amegakurewotan.tools.searxng.query_searxng", return_value=fake_results):
         yield fake_results
 
 
@@ -142,7 +142,7 @@ def mock_kuzu_db(tmp_data_dir):
 @pytest.fixture
 def audit_ledger(tmp_data_dir):
     """ForensicAuditLedger inicializado en directorio temporal."""
-    from karasugakure.evidence.audit import ForensicAuditLedger
+    from amegakurewotan.evidence.audit import ForensicAuditLedger
     ledger = ForensicAuditLedger()
     return ledger
 

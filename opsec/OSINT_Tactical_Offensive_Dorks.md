@@ -1,5 +1,5 @@
 # Dorks OSINT Tácticos y Ofensivos para Validación de Superficie Forense
-**Dojo Karasugakure / Amegakure**  
+**Dojo AmegakureWotan / Amegakure**  
 **Clasificación**: CONFIDENCIAL / OPERACIONAL  
 
 ---

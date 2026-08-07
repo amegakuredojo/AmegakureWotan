@@ -1,8 +1,8 @@
 import pytest
 import json
 from pathlib import Path
-from karasugakure.evidence.audit import ForensicAuditLedger
-from karasugakure.config import get_config
+from amegakurewotan.evidence.audit import ForensicAuditLedger
+from amegakurewotan.config import get_config
 
 @pytest.fixture(autouse=True)
 def mock_config_base_dir(tmp_path, monkeypatch):
@@ -10,7 +10,7 @@ def mock_config_base_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "base_dir", tmp_path)
     config.init_dirs()
     # Mock GraphDB check_connection to False to isolate tests from the live database
-    from karasugakure.graph.db import get_db
+    from amegakurewotan.graph.db import get_db
     db = get_db()
     monkeypatch.setattr(db, "check_connection", lambda: False)
 

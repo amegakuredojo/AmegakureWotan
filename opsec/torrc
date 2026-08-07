@@ -1,4 +1,4 @@
-# Default torrc configuration for Karasugakure in Docker
+# Default torrc configuration for AmegakureWotan in Docker
 SocksPort 0.0.0.0:9150
 ControlPort 0.0.0.0:9051
 HashedControlPassword 16:EEC933D5057E688460AA6A745AFCA8F40C0F7CC21C5E8FB976EC52B920

@@ -49,7 +49,7 @@ FROM python:3.13-slim-bookworm AS runtime
 # para que el ForensicAuditLedger lo registre en el primer bloque
 ARG IMAGE_BUILD_HASH="unset"
 ARG BUILD_DATE="unset"
-ENV KARASU_IMAGE_HASH=${IMAGE_BUILD_HASH}
+ENV AMEWOTAN_IMAGE_HASH=${IMAGE_BUILD_HASH}
 ENV KARASU_BUILD_DATE=${BUILD_DATE}
 
 # Instalar herramientas OSINT del sistema y dependencias runtime (sin gcc ni compiladores)
@@ -94,17 +94,17 @@ RUN ln -s /opt/recon-ng/recon-ng /usr/local/bin/recon-ng \
     && ln -s /opt/theHarvester/theHarvester.py /usr/local/bin/theharvester
 
 # Crear usuario no-root con UID fijo para aislamiento
-RUN groupadd -g 1001 karasu \
-    && useradd -u 1001 -g karasu -m -s /bin/bash -d /home/karasu karasu
+RUN groupadd -g 1001 amegakurewotan \
+    && useradd -u 1001 -g amegakurewotan -m -s /bin/bash -d /home/amegakurewotan amegakurewotan
 
 # Copiar código fuente y assets del proyecto
-COPY --chown=karasu:karasu src/ /app/src/
-COPY --chown=karasu:karasu skills/ /app/skills/
-COPY --chown=karasu:karasu templates/ /app/templates/
-COPY --chown=karasu:karasu prompts/ /app/prompts/
-COPY --chown=karasu:karasu opsec/ /app/opsec/
-COPY --chown=karasu:karasu tests/ /app/tests/
-COPY --chown=karasu:karasu docker/karasu/entrypoint.sh /entrypoint.sh
+COPY --chown=amegakurewotan:amegakurewotan src/ /app/src/
+COPY --chown=amegakurewotan:amegakurewotan skills/ /app/skills/
+COPY --chown=amegakurewotan:amegakurewotan templates/ /app/templates/
+COPY --chown=amegakurewotan:amegakurewotan prompts/ /app/prompts/
+COPY --chown=amegakurewotan:amegakurewotan opsec/ /app/opsec/
+COPY --chown=amegakurewotan:amegakurewotan tests/ /app/tests/
+COPY --chown=amegakurewotan:amegakurewotan docker/amewotan/entrypoint.sh /entrypoint.sh
 
 # Copiar proxychains config al lugar que el sistema espera
 COPY opsec/proxychains4.conf /etc/proxychains4.conf
@@ -112,27 +112,27 @@ COPY opsec/proxychains4.conf /etc/proxychains4.conf
 # Permisos
 RUN chmod +x /entrypoint.sh \
     && chmod 600 /app/opsec/torrc \
-    && chown -R karasu:karasu /app
+    && chown -R amegakurewotan:amegakurewotan /app
 
 # Directorio de trabajo y datos del operador
 WORKDIR /app
 RUN mkdir -p /data/evidence /data/sessions /data/reports /data/graph \
-    && chown -R karasu:karasu /data \
-    && echo '#!/usr/bin/env bash' > /usr/local/bin/karasu \
-    && echo 'exec python3 -m karasugakure.cli "$@"' >> /usr/local/bin/karasu \
-    && chmod +x /usr/local/bin/karasu
+    && chown -R amegakurewotan:amegakurewotan /data \
+    && echo '#!/usr/bin/env bash' > /usr/local/bin/amewotan \
+    && echo 'exec python3 -m amegakurewotan.cli "$@"' >> /usr/local/bin/amewotan \
+    && chmod +x /usr/local/bin/amewotan
 
-USER karasu
+USER amegakurewotan
 
 # Variables de entorno del contenedor
 ENV PYTHONPATH=/app/src
-ENV KARASU_DATA_DIR=/data
+ENV AMEWOTAN_DATA_DIR=/data
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 # OPSEC: Tor bypass para modo Sandbox/Dev (false = kill switch activo)
-ENV KARASU_OPSEC_BYPASS_TOR=false
+ENV AMEWOTAN_OPSEC_BYPASS_TOR=false
 # Sandbox: permite override de path de Kùzu via env var
-ENV KUZU_DATABASE_PATH=/data/karasu_vault.kuzu
+ENV KUZU_DATABASE_PATH=/data/amegakurewotan_vault.kuzu
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []

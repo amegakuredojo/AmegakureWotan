@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from karasugakure.policy.roe import (
+from amegakurewotan.policy.roe import (
     ACTION_ACTIVE,
     ACTION_DARKWEB,
     ACTION_DFIR,
@@ -16,12 +16,12 @@ from karasugakure.policy.roe import (
     RulesOfEngagement,
     ScopeRegistry,
 )
-from karasugakure.policy.gelsi import (
+from amegakurewotan.policy.gelsi import (
     ActionRequest,
     Decision,
     GelsiMiddleware,
 )
-from karasugakure.evidence.forensics import ChainOfCustody
+from amegakurewotan.evidence.forensics import ChainOfCustody
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────

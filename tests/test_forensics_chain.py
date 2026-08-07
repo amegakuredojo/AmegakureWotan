@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from karasugakure.evidence.forensics import (
+from amegakurewotan.evidence.forensics import (
     ChainOfCustody,
     GENESIS_HASH,
     canonical_json,

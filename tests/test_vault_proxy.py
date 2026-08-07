@@ -4,10 +4,10 @@ import os
 import random
 from unittest.mock import patch, MagicMock
 from pathlib import Path
-from karasugakure.config import get_config
-from karasugakure.policy.vault import CredentialVault
-from karasugakure.policy.opsec import get_active_proxies, verify_network_route
-from karasugakure.utils.net import make_tor_request
+from amegakurewotan.config import get_config
+from amegakurewotan.policy.vault import CredentialVault
+from amegakurewotan.policy.opsec import get_active_proxies, verify_network_route
+from amegakurewotan.utils.net import make_tor_request
 
 @pytest.fixture(autouse=True)
 def mock_config_base_dir(tmp_path, monkeypatch):
@@ -55,7 +55,7 @@ def test_get_active_proxies_filtering():
             return True
         return False
         
-    with patch("karasugakure.policy.opsec.check_tor_socks_proxy", side_effect=mock_check):
+    with patch("amegakurewotan.policy.opsec.check_tor_socks_proxy", side_effect=mock_check):
         active = get_active_proxies()
         assert len(active) == 2
         assert "socks5h://127.0.0.1:9050" in active
@@ -71,9 +71,9 @@ def test_make_tor_request_rotation():
     # Mock both proxies as online. Also neutralize the OPSEC jitter sleep and the
     # Tor circuit rotation so the 20-iteration rotation check is hermetic and fast
     # (otherwise random.expovariate jitter sleeps up to 6s per request => test hangs).
-    with patch("karasugakure.policy.opsec.check_tor_socks_proxy", return_value=True), \
-         patch("karasugakure.utils.net.time.sleep", return_value=None), \
-         patch("karasugakure.daemons.isolator.isolator.rotate_identity", return_value=None), \
+    with patch("amegakurewotan.policy.opsec.check_tor_socks_proxy", return_value=True), \
+         patch("amegakurewotan.utils.net.time.sleep", return_value=None), \
+         patch("amegakurewotan.daemons.isolator.isolator.rotate_identity", return_value=None), \
          patch("requests.request") as mock_req:
          
         mock_req.return_value = MagicMock(status_code=200, text="success")

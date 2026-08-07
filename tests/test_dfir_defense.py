@@ -7,20 +7,20 @@ y heurística de phishing defensivo (AmegakureWotan.md §6.3, §7.1).
 """
 from unittest.mock import patch
 
-from karasugakure.dfir.runner import (
+from amegakurewotan.dfir.runner import (
     ContainerRunner,
     detect_container_runtime,
     tool_unavailable_result,
 )
-from karasugakure.dfir.velociraptor import velociraptor_hunt
-from karasugakure.dfir.volatility import memory_analyze
-from karasugakure.dfir.sleuthkit import disk_timeline
-from karasugakure.defense.phishing import phishing_detect
+from amegakurewotan.dfir.velociraptor import velociraptor_hunt
+from amegakurewotan.dfir.volatility import memory_analyze
+from amegakurewotan.dfir.sleuthkit import disk_timeline
+from amegakurewotan.defense.phishing import phishing_detect
 
 
 # ── Runner endurecido ────────────────────────────────────────────────────────
 def test_container_command_is_hardened():
-    with patch("karasugakure.dfir.runner.detect_container_runtime", return_value="/usr/bin/podman"):
+    with patch("amegakurewotan.dfir.runner.detect_container_runtime", return_value="/usr/bin/podman"):
         runner = ContainerRunner(image="img:latest", cpus="0.5", memory="1g")
         cmd = runner.build_command(
             args=["--version"],
@@ -43,7 +43,7 @@ def test_tool_unavailable_result_shape():
 
 # ── Velociraptor: honesto si el binario no está ──────────────────────────────
 def test_velociraptor_unavailable_is_honest():
-    with patch("karasugakure.dfir.velociraptor._binary_available", return_value=False):
+    with patch("amegakurewotan.dfir.velociraptor._binary_available", return_value=False):
         r = velociraptor_hunt("windows_workstations")
     assert r["status"] == "tool_unavailable"
     assert r["tool"] == "velociraptor"
@@ -72,7 +72,7 @@ def test_volatility_plugin_allowlist(tmp_path):
 def test_volatility_unavailable_runtime(tmp_path):
     dump = tmp_path / "mem.dmp"
     dump.write_bytes(b"FAKEDUMP")
-    with patch("karasugakure.dfir.volatility.ContainerRunner.is_available", return_value=False):
+    with patch("amegakurewotan.dfir.volatility.ContainerRunner.is_available", return_value=False):
         r = memory_analyze(str(dump), plugin="windows.pslist")
     assert r["status"] == "tool_unavailable"
     assert "dump_sha512" not in r or True  # hash calculado antes; no se fabrica análisis
@@ -87,7 +87,7 @@ def test_sleuthkit_image_not_found():
 def test_sleuthkit_unavailable_runtime(tmp_path):
     disk = tmp_path / "disk.img"
     disk.write_bytes(b"\x00" * 512)
-    with patch("karasugakure.dfir.sleuthkit.ContainerRunner.is_available", return_value=False):
+    with patch("amegakurewotan.dfir.sleuthkit.ContainerRunner.is_available", return_value=False):
         r = disk_timeline(str(disk))
     assert r["status"] == "tool_unavailable"
 

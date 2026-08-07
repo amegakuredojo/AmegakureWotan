@@ -16,11 +16,11 @@ import os
 
 import pytest
 
-from karasugakure.evidence.custody_signer import (
+from amegakurewotan.evidence.custody_signer import (
     sign_chain,
     verify_chain_signature,
 )
-from karasugakure.evidence.forensics import ChainOfCustody
+from amegakurewotan.evidence.forensics import ChainOfCustody
 
 
 pytestmark = pytest.mark.skipif(
@@ -65,7 +65,7 @@ def test_sign_creates_overlay_and_verifies(seeded_chain, tmp_path):
 
 def test_sign_key_permissions_0600(seeded_chain, tmp_path):
     sign_chain(seeded_chain.timeline_path)
-    from karasugakure.config import get_config
+    from amegakurewotan.config import get_config
     key_path = get_config().base_dir / "opsec" / "keys" / "custody_ed25519.pem"
     assert key_path.exists()
     mode = os.stat(key_path).st_mode & 0o777

@@ -6,7 +6,7 @@
       "args": [
         "compose",
         "-f",
-        "/home/lugh/AmegakureDojo/Karasugakure/docker-compose.yml",
+        "/home/lugh/AmegakureDojo/AmegakureWotan/docker-compose.yml",
         "--profile", "mcp",
         "run",
         "--rm",

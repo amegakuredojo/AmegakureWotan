@@ -7,8 +7,8 @@ Tests del gateway MCP consolidado AmegakureWotan (mcp.gateway.ConsolidatedGatewa
 import pytest
 from unittest.mock import patch
 
-from karasugakure.evidence.forensics import ChainOfCustody, sha512_bytes
-from karasugakure.policy.roe import (
+from amegakurewotan.evidence.forensics import ChainOfCustody, sha512_bytes
+from amegakurewotan.policy.roe import (
     ACTION_ACTIVE,
     ACTION_DARKWEB,
     ACTION_DFIR,
@@ -16,9 +16,9 @@ from karasugakure.policy.roe import (
     RulesOfEngagement,
     ScopeRegistry,
 )
-from karasugakure.policy.gelsi import GelsiMiddleware
-from karasugakure.mcp.gateway import ConsolidatedGateway, GatewayResult
-from karasugakure.mcp.schemas import ReconRequest, ReconTarget, DfirRequest
+from amegakurewotan.policy.gelsi import GelsiMiddleware
+from amegakurewotan.mcp.gateway import ConsolidatedGateway, GatewayResult
+from amegakurewotan.mcp.schemas import ReconRequest, ReconTarget, DfirRequest
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ def test_forensic_verify_allowed_and_sealed(wired):
 
 def test_passive_recon_allowed_with_mock(wired):
     gw, _, _ = wired
-    with patch("karasugakure.agents.heimdall.HeimdallAgent") as MockAgent:
+    with patch("amegakurewotan.agents.heimdall.HeimdallAgent") as MockAgent:
         MockAgent.return_value.execute.return_value = {"subdomains": ["a.target.com"], "ips": ["1.2.3.4"]}
         res = gw.dispatch("recon.passive_scan", {"target": "target.com"})
     assert res.decision == "ALLOW"
@@ -89,7 +89,7 @@ def test_passive_recon_allowed_with_mock(wired):
 
 def test_idempotency_skip(wired):
     gw, _, coc = wired
-    with patch("karasugakure.agents.heimdall.HeimdallAgent") as MockAgent:
+    with patch("amegakurewotan.agents.heimdall.HeimdallAgent") as MockAgent:
         MockAgent.return_value.execute.return_value = {"subdomains": []}
         r1 = gw.dispatch("recon.passive_scan", {"target": "target.com", "operation_id": "op-xyz"})
         r2 = gw.dispatch("recon.passive_scan", {"target": "target.com", "operation_id": "op-xyz"})
@@ -116,8 +116,8 @@ def test_chain_integrity_after_dispatches(wired):
 
 # ── Esquemas Pydantic (§6.2) ─────────────────────────────────────────────────
 def test_recon_request_out_of_scope_rejected(tmp_path):
-    from karasugakure.policy.roe import reset_scope_registry
-    import karasugakure.mcp.schemas as schemas
+    from amegakurewotan.policy.roe import reset_scope_registry
+    import amegakurewotan.mcp.schemas as schemas
 
     reg = ScopeRegistry(roe_dir=tmp_path / "roe", pubkey_path=tmp_path / "k.pem")
     reg.register(RulesOfEngagement(
@@ -133,7 +133,7 @@ def test_recon_request_out_of_scope_rejected(tmp_path):
 
 
 def test_recon_request_active_needs_roe_clause(tmp_path):
-    import karasugakure.mcp.schemas as schemas
+    import amegakurewotan.mcp.schemas as schemas
 
     reg = ScopeRegistry(roe_dir=tmp_path / "roe", pubkey_path=tmp_path / "k.pem")
     reg.register(RulesOfEngagement(

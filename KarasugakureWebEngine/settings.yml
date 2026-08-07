@@ -2,7 +2,7 @@ use_default_settings: true
 
 general:
   debug: false
-  instance_name: "karasugakure-osint"
+  instance_name: "amegakurewotan-osint"
   privacypolicy_url: false
   donation_url: false
   contact_url: false

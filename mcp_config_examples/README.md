@@ -1,4 +1,4 @@
-# 🦅 Karasugakure — MCP Config Examples
+# 🦅 AmegakureWotan — MCP Config Examples
 
 Configuraciones listas para usar en **AGY (Antigravity)**, **OpenCode** y **Docker Sandboxes**.
 
@@ -19,7 +19,7 @@ Configuraciones listas para usar en **AGY (Antigravity)**, **OpenCode** y **Dock
 El stack de infraestructura debe estar levantado **antes** de que AGY/OpenCode inicialice el MCP:
 
 ```bash
-cd /home/lugh/AmegakureDojo/Karasugakure
+cd /home/lugh/AmegakureDojo/AmegakureWotan
 
 # 1. Levantar infraestructura (Tor + SearXNG) en background
 docker compose up -d tor-proxy searxng
@@ -66,7 +66,7 @@ Para entornos aislados donde no hay Tor disponible:
 docker compose -f docker-compose.yml -f docker-compose.sandbox.yml \
   --profile sandbox-mcp run --rm -i --no-TTY --no-deps \
   -e KARASU_SILENT_BOOTSTRAP=true \
-  -e KARASU_OPSEC_BYPASS_TOR=true \
+  -e AMEWOTAN_OPSEC_BYPASS_TOR=true \
   -e SANDBOX_DATA_PATH=/tmp/karasu_sandbox \
   karasu-mcp run
 ```
@@ -79,7 +79,7 @@ O usar `sandbox_config.json` directamente en tu cliente MCP.
 
 | Variable | Default | Descripción |
 |----------|---------|-------------|
-| `KARASU_OPSEC_BYPASS_TOR` | `false` | `true` = Sandbox mode, Tor no requerido |
+| `AMEWOTAN_OPSEC_BYPASS_TOR` | `false` | `true` = Sandbox mode, Tor no requerido |
 | `KARASU_SILENT_BOOTSTRAP` | `false` | `true` = Suprime banners (necesario para MCP) |
 | `KARASU_MCP_TOR_TIMEOUT` | `10` | Segundos máx esperando Tor en modo MCP |
 | `SANDBOX_DATA_PATH` | `/tmp/karasu_sandbox` | Path de datos en modo sandbox |
