@@ -39,6 +39,8 @@ forensic_app = typer.Typer(help="Cadena de custodia consolidada (timeline.jsonl)
 app.add_typer(roe_app, name="roe")
 app.add_typer(mcp_app, name="mcp")
 app.add_typer(forensic_app, name="forensic")
+hitl_app = typer.Typer(help="Cola Human-In-The-Loop (doble puerta GELSI para dfir/darkweb/evasive/PII).")
+app.add_typer(hitl_app, name="hitl")
 
 
 @app.command()
@@ -189,6 +191,60 @@ def forensic_tail(n: int = typer.Option(10, "--n", help="Últimos N eventos.")) 
 
 def main() -> None:
     app()
+
+
+# ── HITL (doble puerta GELSI) ──────────────────────────────────────────────────
+@hitl_app.command("list")
+def hitl_list() -> None:
+    """Lista los tickets Human-In-The-Loop pendientes."""
+    from karasugakure.policy.hitl import get_hitl
+
+    pending = get_hitl().list_pending()
+    if not pending:
+        console.print("[yellow]Sin tickets HITL pendientes.[/yellow]")
+        return
+    table = Table(title="Tickets HITL pendientes")
+    table.add_column("Ticket", style="cyan")
+    table.add_column("Tool", style="green")
+    table.add_column("Acción", style="magenta")
+    table.add_column("Target")
+    table.add_column("RoE")
+    for t in pending:
+        table.add_row(t.ticket_id, t.tool, t.action_type, t.target or "-", t.roe_ref or "-")
+    console.print(table)
+
+
+@hitl_app.command("approve")
+def hitl_approve(
+    ticket_id: str = typer.Argument(..., help="ID del ticket HITL (hitl-...)."),
+    by: str = typer.Option("operator", "--by", help="Quién aprueba."),
+    reason: Optional[str] = typer.Option(None, "--reason", help="Justificación."),
+) -> None:
+    """Aprueba un ticket y re-ejecuta la acción SOLO vía gateway gobernado."""
+    from karasugakure.mcp.gateway import get_gateway
+
+    res = get_gateway().approve_hitl(ticket_id, by=by, reason=reason)
+    color = "green" if res.ok else "red"
+    console.print(Panel.fit(
+        f"[bold {color}]HITL {ticket_id} → {res.decision}[/bold {color}]  ok={res.ok}\n"
+        f"razones={'; '.join(res.reasons)}",
+        title=f"hitl.approve {ticket_id}", border_style=color,
+    ))
+
+
+@hitl_app.command("deny")
+def hitl_deny(
+    ticket_id: str = typer.Argument(..., help="ID del ticket HITL (hitl-...)."),
+    reason: Optional[str] = typer.Option(None, "--reason", help="Justificación."),
+) -> None:
+    """Denega un ticket HITL (no ejecuta nada; se sella en la cadena)."""
+    from karasugakure.mcp.gateway import get_gateway
+
+    res = get_gateway().deny_hitl(ticket_id, reason=reason)
+    console.print(Panel.fit(
+        f"[bold red]HITL {ticket_id} → DENIED[/bold red]\n{res.reasons[0] if res.reasons else ''}",
+        title=f"hitl.deny {ticket_id}", border_style="red",
+    ))
 
 
 if __name__ == "__main__":

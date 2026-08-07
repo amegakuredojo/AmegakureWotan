@@ -234,7 +234,11 @@ class GelsiMiddleware:
             reasons.append(f"acción '{action}' autorizada por RoE '{roe.roe_id}'")
 
             # 4. Puerta humana (HITL) para acciones de alto impacto.
-            if action in _ACTIONS_REQUIRING_HITL:
+            #    Se omite SOLO si el gateway re-ejecuta tras un ticket HITL aprobado
+            #    (request.metadata["__hitl_bypass"]). El veto DENY por social-eng
+            #    ofensiva y la validación de RoE/scope permanecen intactos arriba.
+            hitl_bypass = bool(request.metadata.get("__hitl_bypass"))
+            if action in _ACTIONS_REQUIRING_HITL and not hitl_bypass:
                 reasons.append(f"acción '{action}' exige aprobación HITL (doble puerta)")
                 return GelsiVerdict(Decision.REQUIRE_HITL, reasons=reasons, roe_ref=roe.roe_id)
 

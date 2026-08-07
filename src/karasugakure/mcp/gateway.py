@@ -65,6 +65,8 @@ class GatewayResult:
     roe_ref: Optional[str] = None
     payload_hash: Optional[str] = None
     error: Optional[str] = None
+    hitl_ticket_id: Optional[str] = None
+    hitl_state: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -76,6 +78,8 @@ class GatewayResult:
             "roe_ref": self.roe_ref,
             "payload_hash": self.payload_hash,
             "error": self.error,
+            "hitl_ticket_id": self.hitl_ticket_id,
+            "hitl_state": self.hitl_state,
         }
 
 
@@ -124,6 +128,8 @@ class ConsolidatedGateway:
             return GatewayResult(tool=tool, decision="DENY", error=f"herramienta desconocida: {tool}")
 
         arguments = arguments or {}
+        # Flag de re-ejecución HITL: viaja a GELSI (metadata) pero NUNCA al handler.
+        hitl_bypass = bool(arguments.pop("__hitl_bypass", False))
         action_type = self._action_map.get(tool, ACTION_PASSIVE)
         target = arguments.get("target") or arguments.get("subject") or arguments.get("value")
         roe_token = arguments.get("roe_token")
@@ -140,18 +146,40 @@ class ConsolidatedGateway:
                 intent=intent,
                 involves_pii=involves_pii,
                 collector_id=arguments.get("collector_id", "mcp-client"),
-                metadata={"domain": tool.split(".")[0]},
+                metadata={"domain": tool.split(".")[0], "__hitl_bypass": hitl_bypass},
             ),
             seal=True,
         )
 
         if verdict.decision != Decision.ALLOW:
+            # REQUIRE_HITL: levantar ticket pendiente (doble puerta) y NO ejecutar.
+            # La decisión queda sellada en la cadena; el operador resuelve vía
+            # approve_hitl()/deny_hitl(); solo un ticket APPROVED re-ejecuta.
+            hitl_ticket_id = None
+            if verdict.decision == Decision.REQUIRE_HITL:
+                try:
+                    from karasugakure.policy.hitl import get_hitl
+
+                    ticket = get_hitl().create_ticket(
+                        tool=tool,
+                        action_type=action_type,
+                        target=target,
+                        roe_ref=verdict.roe_ref,
+                        request_args=arguments,
+                        reasons=verdict.reasons,
+                    )
+                    hitl_ticket_id = ticket.ticket_id
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("No se pudo crear ticket HITL para '%s': %s", tool, exc)
+
             return GatewayResult(
                 tool=tool,
                 decision=verdict.decision.value,
                 ok=False,
                 reasons=verdict.reasons,
                 roe_ref=verdict.roe_ref,
+                hitl_ticket_id=hitl_ticket_id,
+                hitl_state="PENDING" if hitl_ticket_id else None,
             )
 
         # ── Idempotencia (§10.2) ──────────────────────────────────────────────
@@ -281,6 +309,36 @@ class ConsolidatedGateway:
     def _h_defense_phishing(self, args: Dict[str, Any]) -> Dict[str, Any]:
         from karasugakure.defense.phishing import phishing_detect
         return phishing_detect(args.get("subject", ""), **args.get("params", {}))
+
+    # ── Resolución HITL (doble puerta) ────────────────────────────────────────
+    def approve_hitl(self, ticket_id: str, by: str = "operator", reason: Optional[str] = None) -> GatewayResult:
+        """
+        Resuelve un ticket HITL APPROVED y re-ejecuta la acción SOLO a través
+        del gateway (GELSI se re-evalúa sin la puerta HITL, pero se mantienen
+        el veto DENY por social-eng ofensiva y la validación de scope/RoE).
+        """
+        from karasugakure.policy.hitl import get_hitl
+
+        ticket = get_hitl().approve(ticket_id, by=by, reason=reason)
+        args = dict(ticket.request_args)
+        args.pop("__hitl_bypass", None)
+        # Re-evaluación GELSI con bypass de la puerta HITL (la RoE sigue obligatoria).
+        args["__hitl_bypass"] = True
+        res = self.dispatch(ticket.tool, args)
+        res.hitl_ticket_id = ticket_id
+        res.hitl_state = "APPROVED"
+        return res
+
+    def deny_hitl(self, ticket_id: str, by: str = "operator", reason: Optional[str] = None) -> "GatewayResult":
+        """Resuelve un ticket HITL DENIED (no ejecuta nada; se sella en la cadena)."""
+        from karasugakure.policy.hitl import get_hitl
+
+        ticket = get_hitl().deny(ticket_id, by=by, reason=reason)
+        return GatewayResult(
+            tool=ticket.tool, decision="DENY", ok=False,
+            reasons=["HITL denegado por operador: " + (reason or "sin motivo")],
+            roe_ref=ticket.roe_ref, hitl_ticket_id=ticket_id, hitl_state="DENIED",
+        )
 
 
 # Singleton perezoso.

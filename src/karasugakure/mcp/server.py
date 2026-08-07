@@ -43,6 +43,19 @@ from karasugakure.tools.searxng import query_searxng
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # CONSTANTES
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GOBERNANZA WOTAN (F5): GELSI + HITL + cadena de custodia
+# Toda tool pasa por govern() antes de ejecutar. Cierra el bypass histórico:
+# darkweb/dfir/active ya no se ejecutan sin RoE, y TODA ejecución se sella.
+# La lógica vive en mcp.governance (importable sin el SDK MCP de bajo nivel).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+from karasugakure.mcp.governance import (  # noqa: E402  (tras imports locales)
+    govern as _govern,
+    seal_execution as _seal_execution,
+    handle_hitl_tool as _handle_hitl_tool,
+)
+
+
 SERVER_NAME: str = "KarasugakureMCP"
 FORGE_OPERATOR: str = "lugh"
 
@@ -170,7 +183,39 @@ def _validate_cypher_allowlist(query: str) -> bool:
     return first_word in _CYPHER_ALLOWLIST
 
 
-@app.list_tools()
+# Registro de tools en el servidor MCP de bajo nivel. El SDK mcp >=2.0 renombró
+# la API de alto nivel (list_tools/call_tool); en esa versión el registro es un
+# no-op pero el módulo debe importar sin fallar. La gobernanza Wotan (F5) viaja
+# por mcp.governance y el gateway, no por este decorador.
+def _register_mcp_tools(app):
+    if hasattr(app, "list_tools") and hasattr(app, "call_tool"):
+
+        @app.list_tools()
+        async def _list_tools():
+            return [
+                Tool(name="searxng_recon", description="(registrada vía gateway Wotan gobernado)",
+                     inputSchema={"type": "object", "properties": {}, "required": []}),
+            ]
+
+        @app.call_tool()
+        async def _call_tool(name, arguments):  # pragma: no cover - path only on old SDK
+            from karasugakure.mcp.governance import govern, handle_hitl_tool
+
+            decision, payload = govern(name, arguments)
+            if decision == "ALLOW":
+                return handle_hitl_tool(name, arguments) if name.startswith("wotan_hitl") else [
+                    TextContent(type="text", text="[WOTAN] ejecución vía gateway requerida")]
+            if decision == "REQUIRE_HITL":
+                return [TextContent(type="text", text=f"[GELSI: REQUIRE_HITL] ticket {payload}")]
+            return [TextContent(type="text", text=f"[GELSI: DENY] {payload}")]
+
+    return app
+
+
+# Nota: el registro de alto nivel (@app.list_tools/@app.call_tool) requiere el SDK
+# mcp <2.0. Bajo mcp 2.0.0 el server de bajo nivel no expone esos decoradores;
+# la gobernanza Wotan (F5) se sirve vía mcp.governance + gateway. No se invoca
+# _register_mcp_tools(app) aquí para garantizar import limpio en mcp 2.0.0.
 async def list_tools() -> List[Tool]:
     """Lista el arsenal completo de tools OSINT expuestas al LLM cliente."""
     return [
@@ -385,10 +430,48 @@ async def list_tools() -> List[Tool]:
                 "required": [],
             },
         ),
+        # ── Control-plane Wotan (HITL) — operador resuelve la doble puerta ─────
+        Tool(
+            name="wotan_hitl_list",
+            description=(
+                "Lista los tickets Human-In-The-Loop pendientes (acciones dfir/darkweb/"
+                "evasive o PII sin minimizar que GELSI puso en REQUIRE_HITL)."
+            ),
+            inputSchema={"type": "object", "properties": {}, "required": []},
+        ),
+        Tool(
+            name="wotan_hitl_approve",
+            description=(
+                "Aprueba un ticket HITL y re-ejecuta la acción SOLO a través del gateway "
+                "gobernado (GELSI re-evalúa sin la puerta HITL pero mantiene veto DENY y scope)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {"type": "string", "description": "ID del ticket HITL (hitl-...)."},
+                    "by": {"type": "string", "description": "(Opcional) quien aprueba. Default: operator."},
+                    "reason": {"type": "string", "description": "(Opcional) justificación."},
+                },
+                "required": ["ticket_id"],
+            },
+        ),
+        Tool(
+            name="wotan_hitl_deny",
+            description=(
+                "Denega un ticket HITL (no ejecuta nada; se sella en la cadena de custodia)."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "ticket_id": {"type": "string", "description": "ID del ticket HITL (hitl-...)."},
+                    "reason": {"type": "string", "description": "(Opcional) justificación de la denegación."},
+                },
+                "required": ["ticket_id"],
+            },
+        ),
     ]
 
 
-@app.call_tool()
 async def call_tool(name: str, arguments: dict) -> List[TextContent]:
     """
     Manejador central de ejecución de tools MCP.
@@ -404,6 +487,22 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
         ValueError: Si la tool es desconocida.
     """
     logger.info(f"Tool invocada: {name} | args_keys={list(arguments.keys())}")
+
+    # ── Control-plane Wotan HITL (no pasa por _govern: es acción de operador) ──
+    if name in ("wotan_hitl_list", "wotan_hitl_approve", "wotan_hitl_deny"):
+        return _handle_hitl_tool(name, arguments)
+
+    # ── Gobernanza Wotan (F5): GELSI + HITL + cadena de custodia ──────────────
+    # Toda tool pasa por govern(). Sin ALLOW, NO se ejecuta (deny-by-default).
+    decision, payload = _govern(name, arguments)
+    if decision != "ALLOW":
+        if decision == "REQUIRE_HITL":
+            return [TextContent(
+                type="text",
+                text=(f"[GELSI: REQUIRE_HITL] La acción requiere aprobación humana (doble puerta). "
+                      f"Ticket creado: {payload}. Resolver con: amewotan hitl approve {payload}"),
+            )]
+        return [TextContent(type="text", text=f"[GELSI: DENY] {payload}")]
 
     # ── Tool: searxng_recon ──────────────────────────────────────────────────
     if name == "searxng_recon":
@@ -421,6 +520,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             compressed_text = "\n".join(compressed_lines) if compressed_lines else "(sin resultados)"
             custody_hash = _forensic_hash(json.dumps(results, ensure_ascii=False))
             logger.info(f"searxng_recon completado. Resultados={len(results)} SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, compressed_text)
             return [TextContent(
                 type="text",
                 text=(
@@ -442,6 +542,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             results = agent.execute(target)
             custody_hash = _forensic_hash(json.dumps(results, ensure_ascii=False, default=str))
             logger.info(f"heimdall_recon completado para {target}. SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, json.dumps(results, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -481,6 +582,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
                 "evidence_count": len(results.get("evidence", [])),
                 "custody_sha512": custody_hash,
             }
+            _seal_execution(name, arguments, json.dumps(summary, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -503,6 +605,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             results = agent.execute(username)
             custody_hash = _forensic_hash(json.dumps(results, ensure_ascii=False, default=str))
             logger.info(f"huginn_humint completado para {username}. SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, json.dumps(results, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -524,6 +627,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             results = agent.execute(query)
             custody_hash = _forensic_hash(json.dumps(results, ensure_ascii=False, default=str))
             logger.info(f"hel_darkweb completado para query '{query[:32]}...'. SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, json.dumps(results, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -549,6 +653,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             correlations = agent.execute(graph_data, **kwargs)
             custody_hash = _forensic_hash(json.dumps(correlations, ensure_ascii=False, default=str))
             logger.info(f"fenrir_correlate completado. Correlaciones={len(correlations)} SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, json.dumps(correlations, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -627,6 +732,7 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
             nodes_count = len(graph_data.get("nodes", []))
             edges_count = len(graph_data.get("edges", []))
             logger.info(f"export_graph completado. Nodos={nodes_count} Edges={edges_count} SHA-512={custody_hash[:16]}...")
+            _seal_execution(name, arguments, json.dumps(graph_data, default=str)[:4096])
             return [TextContent(
                 type="text",
                 text=(
@@ -641,6 +747,15 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
     else:
         logger.warning(f"Tool desconocida solicitada: {name}")
         raise ValueError(f"[KARASU-MCP] Tool desconocida: '{name}'")
+
+
+# Registro condicional en el servidor MCP de bajo nivel (solo SDK mcp <2.0).
+# En mcp 2.0.0 no existe la API de alto nivel; el módulo importa y la gobernanza
+# Wotan (F5) se sirve vía mcp.governance + gateway.
+if hasattr(app, "call_tool"):
+    call_tool = app.call_tool()(call_tool)  # type: ignore[assignment]
+if hasattr(app, "list_tools"):
+    list_tools = app.list_tools()(list_tools)  # type: ignore[assignment]
 
 
 async def main() -> None:
