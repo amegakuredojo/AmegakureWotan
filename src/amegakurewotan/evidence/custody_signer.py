@@ -119,19 +119,19 @@ def _pubkey_sha256(key_path: Path) -> str:
 
 
 def _openssl_sign(key_path: Path, digest_hex: str) -> str:
-    """Firma Ed25519 (rawin) de los bytes crudos del digest SHA-512.
+    """Firma Ed25519 del digest.
 
-    EdDSA no admite digest explícito, así que firmamos el mensaje crudo: los
-    64 bytes del SHA-512. Portable en OpenSSL >=3.0.
+    EdDSA hashea SHA-512 internamente, por lo que firmamos el mensaje (hex del
+    SHA-512 de la cadena) SIN -rawin: portable en todas las versiones de OpenSSL
+    >=3.0 (evita la ambigüedad de -rawin entre 3.0 y 3.5).
     """
     import tempfile
-    digest_bytes = bytes.fromhex(digest_hex)
-    with tempfile.NamedTemporaryFile(delete=False) as tf:
-        tf.write(digest_bytes)
+    with tempfile.NamedTemporaryFile(delete=False, mode="w") as tf:
+        tf.write(digest_hex)
         datafile = tf.name
     try:
         proc = subprocess.run(
-            ["openssl", "pkeyutl", "-sign", "-rawin", "-inkey", str(key_path), "-in", datafile],
+            ["openssl", "pkeyutl", "-sign", "-inkey", str(key_path), "-in", datafile],
             capture_output=True, timeout=30,
         )
     finally:
@@ -146,16 +146,15 @@ def _openssl_sign(key_path: Path, digest_hex: str) -> str:
 
 def _openssl_verify(key_path: Path, digest_hex: str, sig_hex: str) -> bool:
     import tempfile
-    digest_bytes = bytes.fromhex(digest_hex)
-    with tempfile.NamedTemporaryFile(delete=False) as df:
-        df.write(digest_bytes)
+    with tempfile.NamedTemporaryFile(delete=False, mode="w") as df:
+        df.write(digest_hex)
         datafile = df.name
     with tempfile.NamedTemporaryFile(delete=False) as sf:
         sf.write(bytes.fromhex(sig_hex))
         sigfile = sf.name
     try:
         proc = subprocess.run(
-            ["openssl", "pkeyutl", "-verify", "-rawin", "-pubin", "-inkey", str(key_path),
+            ["openssl", "pkeyutl", "-verify", "-pubin", "-inkey", str(key_path),
              "-in", datafile, "-sigfile", sigfile],
             capture_output=True, text=True, timeout=30,
         )
