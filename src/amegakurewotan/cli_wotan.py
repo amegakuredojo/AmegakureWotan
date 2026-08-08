@@ -41,6 +41,8 @@ app.add_typer(mcp_app, name="mcp")
 app.add_typer(forensic_app, name="forensic")
 hitl_app = typer.Typer(help="Cola Human-In-The-Loop (doble puerta GELSI para dfir/darkweb/evasive/PII).")
 app.add_typer(hitl_app, name="hitl")
+mission_app = typer.Typer(help="Misión OSINT/DFIR end-to-end gobernada (GELSI/HITL/CoC) con dossier forense.")
+app.add_typer(mission_app, name="mission")
 
 
 @app.command()
@@ -286,6 +288,139 @@ def hitl_deny(
         f"[bold red]HITL {ticket_id} → DENIED[/bold red]\n{res.reasons[0] if res.reasons else ''}",
         title=f"hitl.deny {ticket_id}", border_style="red",
     ))
+
+
+# ── Misión end-to-end (WOTAN-F7) ──────────────────────────────────────────────
+@mission_app.command("plans")
+def mission_plans() -> None:
+    """Lista los planes de misión disponibles y sus pasos."""
+    from amegakurewotan.runtime.mission import PLANS
+
+    for name, steps in PLANS.items():
+        table = Table(title=f"Plan: {name}  ({len(steps)} pasos)")
+        table.add_column("#", style="cyan")
+        table.add_column("Herramienta", style="green")
+        table.add_column("Descripción")
+        for i, s in enumerate(steps):
+            table.add_row(str(i), s.tool, s.label or s.tool)
+        console.print(table)
+
+
+@mission_app.command("run")
+def mission_run(
+    target: str = typer.Argument(..., help="Objetivo de la misión (dominio/host/IP)."),
+    plan: str = typer.Option("osint_recon", "--plan", "-p", help="osint_recon | dfir_triage | full."),
+    roe_token: Optional[str] = typer.Option(None, "--roe", "-r", help="RoE que autoriza la misión."),
+    operator: str = typer.Option("operator", "--operator", help="Identificador del operador."),
+    no_sign: bool = typer.Option(False, "--no-sign", help="No firmar Ed25519 al finalizar (debug)."),
+) -> None:
+    """Ejecuta una misión end-to-end gobernada y sella su dossier forense."""
+    from amegakurewotan.runtime.mission import MissionOrchestrator
+
+    result = MissionOrchestrator().run(
+        target=target, roe_token=roe_token, plan=plan, operator=operator, sign=not no_sign,
+    )
+    c = result.counts
+    verdict_color = "green" if result.chain_verified and (not result.signature or result.signature_valid) else "red"
+    console.print(Panel.fit(
+        f"[bold {verdict_color}]MISIÓN {result.mission_id}[/bold {verdict_color}]\n"
+        f"objetivo={result.target}  plan={result.plan}  roe={result.roe_ref or '—'}\n"
+        f"ALLOW={c.get('ALLOW', 0)}  DENY={c.get('DENY', 0)}  "
+        f"REQUIRE_HITL={c.get('REQUIRE_HITL', 0)}  ERROR={c.get('ERROR', 0)}\n"
+        f"cadena={'ÍNTEGRA' if result.chain_verified else 'CORRUPTA'} ({result.chain_records} registros)  "
+        f"firma={'VÁLIDA' if result.signature_valid else ('n/a' if no_sign else 'NO VÁLIDA')}",
+        title="mission run", border_style=verdict_color,
+    ))
+    table = Table(title="Pasos gobernados")
+    table.add_column("#", style="cyan")
+    table.add_column("Herramienta", style="green")
+    table.add_column("Decisión", style="magenta")
+    table.add_column("OK")
+    table.add_column("HITL")
+    for s in result.steps:
+        dcolor = {"ALLOW": "green", "DENY": "red", "REQUIRE_HITL": "yellow"}.get(s.decision, "white")
+        table.add_row(
+            str(s.index), s.tool, f"[{dcolor}]{s.decision}[/{dcolor}]",
+            "sí" if s.ok else "no", s.hitl_ticket_id or "—",
+        )
+    console.print(table)
+    console.print(f"[dim]dossier JSON:[/dim] {result.dossier_json_path}")
+    console.print(f"[dim]dossier MD:  [/dim] {result.dossier_md_path}")
+
+
+@mission_app.command("list")
+def mission_list() -> None:
+    """Lista las misiones ejecutadas (dossiers persistidos)."""
+    from amegakurewotan.runtime.mission import list_missions
+
+    missions = list_missions()
+    if not missions:
+        console.print("[yellow]No hay misiones registradas.[/yellow]")
+        return
+    table = Table(title="Misiones AmegakureWotan")
+    table.add_column("Mission ID", style="cyan")
+    table.add_column("Plan", style="green")
+    table.add_column("Objetivo")
+    table.add_column("Fin (UTC)")
+    table.add_column("A/D/H", style="magenta")
+    table.add_column("Firma")
+    for m in missions:
+        c = m.get("counts", {})
+        adh = f"{c.get('ALLOW', 0)}/{c.get('DENY', 0)}/{c.get('REQUIRE_HITL', 0)}"
+        table.add_row(
+            m.get("mission_id", "?"), m.get("plan", "?"), m.get("target", "?"),
+            m.get("finished_ts_utc", "?"), adh,
+            "✔" if m.get("signature_valid") else "✘",
+        )
+    console.print(table)
+
+
+@mission_app.command("status")
+def mission_status(mission_id: str = typer.Argument(..., help="ID de la misión (msn-...).")) -> None:
+    """Muestra el estado consolidado (gobernanza + cadena + firma) de una misión."""
+    from amegakurewotan.runtime.mission import load_mission
+
+    dossier = load_mission(mission_id)
+    if dossier is None:
+        console.print(f"[red]Misión '{mission_id}' no encontrada.[/red]")
+        raise typer.Exit(code=1)
+    c = dossier.get("counts", {})
+    chain = dossier.get("chain", {})
+    console.print(Panel.fit(
+        f"[bold cyan]{dossier.get('mission_id')}[/bold cyan]\n"
+        f"objetivo={dossier.get('target')}  plan={dossier.get('plan')}  roe={dossier.get('roe_ref') or '—'}\n"
+        f"inicio={dossier.get('started_ts_utc')}  fin={dossier.get('finished_ts_utc')}\n"
+        f"ALLOW={c.get('ALLOW', 0)}  DENY={c.get('DENY', 0)}  "
+        f"REQUIRE_HITL={c.get('REQUIRE_HITL', 0)}  ERROR={c.get('ERROR', 0)}\n"
+        f"cadena={'ÍNTEGRA' if chain.get('verified') else 'CORRUPTA'} ({chain.get('records', 0)} registros)  "
+        f"firma={'VÁLIDA' if dossier.get('signature_valid') else 'NO VÁLIDA'}",
+        title=f"mission status: {mission_id}", border_style="cyan",
+    ))
+
+
+@mission_app.command("report")
+def mission_report(
+    mission_id: str = typer.Argument(..., help="ID de la misión (msn-...)."),
+    fmt: str = typer.Option("md", "--format", "-f", help="md | json — formato del dossier a emitir."),
+) -> None:
+    """Emite el dossier forense de una misión (Markdown para operador o JSON máquina)."""
+    from amegakurewotan.runtime.mission import load_mission
+    from pathlib import Path
+
+    dossier = load_mission(mission_id)
+    if dossier is None:
+        console.print(f"[red]Misión '{mission_id}' no encontrada.[/red]")
+        raise typer.Exit(code=1)
+    if fmt == "json":
+        console.print_json(json.dumps(dossier, default=str))
+        return
+    from amegakurewotan.config import get_config
+
+    md_path = get_config().base_dir / "reports" / f"mission_{mission_id}.md"
+    if not md_path.exists():
+        console.print(f"[red]Dossier Markdown no encontrado: {md_path}[/red]")
+        raise typer.Exit(code=1)
+    console.print(Path(md_path).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

@@ -74,3 +74,41 @@ jobs:
           python -m amegakurewotan.cli_wotan forensic sign
           python -m amegakurewotan.cli_wotan forensic verify-sign
           python -m amegakurewotan.cli_wotan hitl list
+      - name: CLI — misión end-to-end gobernada (WOTAN-F7)
+        run: |
+          # Misión real: recon pasivo ALLOW, activa DENY sin RoE, cadena sellada y
+          # firmada Ed25519. Verifica que la firma de la cadena resultante es válida.
+          python -m amegakurewotan.cli_wotan mission plans
+          python -m amegakurewotan.cli_wotan mission run ci-target.example --plan osint_recon --operator ci
+          python -m amegakurewotan.cli_wotan mission list
+          python -m amegakurewotan.cli_wotan forensic verify
+          python -m amegakurewotan.cli_wotan forensic verify-sign
+
+  package:
+    name: "Empaquetado + despliegue limpio (wheel install real)"
+    runs-on: ubuntu-latest
+    needs: test
+    env:
+      AMEWOTAN_OPSEC_BYPASS_TOR: "true"
+      AMEWOTAN_DATA_DIR: "/tmp/amewotan-ci-pkg"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build sdist + wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      - name: Instalar el wheel en un entorno limpio y validar el console_script
+        run: |
+          python -m venv /tmp/clean-venv
+          . /tmp/clean-venv/bin/activate
+          pip install --upgrade pip
+          pip install dist/amegakurewotan-*.whl
+          # El binario 'amewotan' debe existir en PATH y ejecutar la misión E2E real.
+          which amewotan
+          amewotan doctrine
+          amewotan mission run pkg-target.example --plan osint_recon --operator ci-pkg
+          amewotan forensic verify
+          amewotan forensic verify-sign

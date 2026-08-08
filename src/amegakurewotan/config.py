@@ -50,8 +50,15 @@ def get_config() -> Config:
         # Load settings from environment variables using BaseSettings
         kuzu_settings = KuzuSettings()
         opsec_settings = OpsecSettings()
-        
+
+        # Releer AMEWOTAN_DATA_DIR en tiempo de llamada (no en import): así, tras
+        # un reset de singleton (_config=None), get_config() honra el env actual.
+        # Esto hace efectivos los overrides de tests/despliegue y evita que un
+        # valor congelado en import-time apunte a un base_dir equivocado.
+        base_dir = Path(os.environ.get("AMEWOTAN_DATA_DIR", str(Path.home() / ".amegakurewotan")))
+
         _config = Config(
+            base_dir=base_dir,
             kuzu=kuzu_settings,
             opsec=opsec_settings
         )
