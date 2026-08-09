@@ -1,6 +1,10 @@
 # Makefile — AmegakureWotan Operation Interface
 
-.PHONY: build up down shell recon humint darkweb correlate report test clean verify-ledger
+.PHONY: build up down shell recon humint darkweb correlate report test clean verify-ledger setup test-local cov container-check
+
+# Runtime local (host): venv + podman. CONTAINER_RUNTIME override permite forzar docker.
+VENV_PY := .venv/bin/python3
+CONTAINER_RUNTIME ?= podman
 
 # Genera hash reproducible del build context para el ledger forense
 BUILD_HASH := $(shell find src/ skills/ pyproject.toml Dockerfile -type f \
@@ -68,6 +72,25 @@ test:
 # ── FORENSIC VERIFICATION ─────────────────────────────────────────────────────
 verify-ledger:
 	@docker compose run --rm amegakurewotan audit verify
+
+# ── DESARROLLO LOCAL (host: venv + podman) ────────────────────────────────────
+setup:
+	@echo "[SETUP] venv + deps (editable + dev + pytest-timeout)..."
+	@test -d .venv || python3 -m venv .venv
+	@$(VENV_PY) -m pip install --upgrade pip -q
+	@$(VENV_PY) -m pip install -e ".[dev]" -q
+	@$(VENV_PY) -m pip install pytest-timeout -q
+	@echo "[SETUP] OK. Runtime de contenedores: $(CONTAINER_RUNTIME)"
+
+test-local:
+	@AMEWOTAN_OPSEC_BYPASS_TOR=true $(VENV_PY) -m pytest tests/ -q --no-header -p no:cacheprovider --timeout=60
+
+cov:
+	@AMEWOTAN_OPSEC_BYPASS_TOR=true $(VENV_PY) -m pytest tests/ -q --no-header -p no:cacheprovider \
+	  --timeout=60 --cov=src/amegakurewotan --cov-report=term-missing --cov-fail-under=80
+
+container-check:
+	@command -v $(CONTAINER_RUNTIME) >/dev/null 2>&1 && echo "[OK] $(CONTAINER_RUNTIME) disponible" || echo "[FALTA] $(CONTAINER_RUNTIME) no encontrado"
 
 # ── CLEANUP ───────────────────────────────────────────────────────────────────
 clean:

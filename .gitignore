@@ -45,5 +45,15 @@ memgraph_data/
 .DS_Store
 Thumbs.db
 
+# Coverage / pytest artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+coverage.xml
+
+# Hermes plans (local planning, no forma parte del artefacto)
+.hermes/
+
 # Environment Secrets
 .env
