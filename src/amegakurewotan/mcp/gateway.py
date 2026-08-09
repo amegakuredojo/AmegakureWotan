@@ -251,6 +251,9 @@ class ConsolidatedGateway:
         self.register("recon.passive_scan", ACTION_PASSIVE, self._h_recon_passive)
         self.register("recon.active_surface", ACTION_ACTIVE, self._h_recon_active)
         self.register("recon.deep_osint", ACTION_PASSIVE, self._h_recon_deep)
+        # recon L3 — adapters honestos sobre motores externos (WOTAN-F4).
+        self.register("recon.greynoise", ACTION_PASSIVE, self._h_recon_greynoise)
+        self.register("recon.theharvester", ACTION_PASSIVE, self._h_recon_theharvester)
         # graph.* — consulta read-only.
         self.register("graph.query", ACTION_PASSIVE, self._h_graph_query)
         # darkweb.* — HelAgent bajo Tor + HITL.
@@ -282,6 +285,20 @@ class ConsolidatedGateway:
         target = args["target"]
         return {"source": "heimdall", "mode": "deep_osint", "target": target,
                 "results": HeimdallAgent().execute(target)}
+
+    def _h_recon_greynoise(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.greynoise import greynoise_ip_report
+        ip = args.get("target") or args.get("ip") or args.get("subject")
+        if not ip:
+            return {"status": "error", "reason": "recon.greynoise requiere 'target'/'ip'"}
+        return greynoise_ip_report(ip)
+
+    def _h_recon_theharvester(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.theharvester import theharvester_run
+        domain = args.get("target") or args.get("domain")
+        if not domain:
+            return {"status": "error", "reason": "recon.theharvester requiere 'target'/'domain'"}
+        return theharvester_run(domain, sources=args.get("sources"), limit=int(args.get("limit", 100)))
 
     def _h_graph_query(self, args: Dict[str, Any]) -> Dict[str, Any]:
         from amegakurewotan.graph.export import export_to_json

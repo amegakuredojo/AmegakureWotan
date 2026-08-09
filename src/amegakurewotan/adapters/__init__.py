@@ -1,6 +1,2 @@
-from amegakurewotan.adapters.web import WebAdapter
-from amegakurewotan.adapters.social import SocialAdapter
-from amegakurewotan.adapters.darkweb import DarkWebAdapter
-from amegakurewotan.adapters.archive import ArchiveAdapter
-from amegakurewotan.adapters.graph import GraphAdapter
-from amegakurewotan.adapters.evidence import EvidenceAdapter
+# FORGE_CONTEXT: CIVIL
+"""Paquete adapters: capa de integración con motores externos (L3) y herramientas."""
