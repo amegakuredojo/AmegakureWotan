@@ -1,6 +1,6 @@
 # Onion spider placeholder skill
 import sys
-from karasugakure.adapters.darkweb import DarkWebAdapter
+from amegakurewotan.adapters.darkweb import DarkWebAdapter
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

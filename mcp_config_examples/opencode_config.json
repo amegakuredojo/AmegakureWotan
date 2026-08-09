@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "karasugakure": {
+    "amegakurewotan": {
       "type": "stdio",
       "command": "docker",
       "args": [
@@ -14,7 +14,7 @@
         "--no-TTY",
         "--no-deps",
         "-e", "KARASU_SILENT_BOOTSTRAP=true",
-        "karasu-mcp",
+        "amewotan-mcp",
         "run"
       ]
     }

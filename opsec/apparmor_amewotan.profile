@@ -1,6 +1,6 @@
 #include <tunables/global>
 
-profile karasu-strict-profile flags=(attach_disconnected,mediate_deleted) {
+profile amewotan-strict-profile flags=(attach_disconnected,mediate_deleted) {
   #include <abstractions/base>
   #include <abstractions/nameservice>
   

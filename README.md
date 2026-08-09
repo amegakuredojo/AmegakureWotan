@@ -44,7 +44,7 @@ cd AmegakureWotan
 ./install.sh
 ```
 
-> **Note:** The `install.sh` script will build the hardened containers and create a global wrapper at `~/.local/bin/karasu`. Ensure `~/.local/bin` is in your `$PATH`.
+> **Note:** The `install.sh` script will build the hardened containers and create a global wrapper at `~/.local/bin/amewotan`. Ensure `~/.local/bin` is in your `$PATH`.
 
 ---
 
@@ -55,48 +55,48 @@ Once installed, AmegakureWotan acts as a native CLI tool. You do not need to be 
 ### Core Orchestration
 Launch a full automated reconnaissance cycle against a target (Domain, IP, Persona):
 ```bash
-karasu orchestrate target.com
+amewotan orchestrate target.com
 ```
 
 ### Graph Visualization
 View the correlated OSINT footprint in a beautiful ASCII tree format directly in your terminal (No web ports exposed for strict OPSEC):
 ```bash
-karasu graph view
+amewotan graph view
 ```
 
 ### Forensic Operations
 Verify the cryptographic integrity of your case ledger:
 ```bash
-karasu audit verify
+amewotan audit verify
 ```
 
 Export a sanitized JSON intelligence dossier:
 ```bash
-karasu export
+amewotan export
 ```
 
 Generate a Markdown dossier report:
 ```bash
-karasu report --format markdown
+amewotan report --format markdown
 ```
 
 ### Dark Web Ops
 Search indexed onion endpoints safely through the internal Tor proxy:
 ```bash
-karasu darkweb "search_query"
+amewotan darkweb "search_query"
 ```
 
 ### Interactive Dashboard (TUI)
 Launch the Textual User Interface for immersive investigation directly in the terminal:
 ```bash
-karasu tui
+amewotan tui
 ```
 
 ---
 
 ## ⚔️ Consolidated Governed Layer (`amewotan`)
 
-Beyond the historical `karasu` OSINT harness, AmegakureWotan ships a **consolidated,
+Beyond the historical `amewotan` OSINT harness, AmegakureWotan ships a **consolidated,
 governed operator layer** exposed through the `amewotan` CLI. Every capability
 (recon / defense / active surface / darkweb / DFIR / forensic) is routed through a
 single MCP gateway under the **GELSI** policy engine (deny-by-default), the
@@ -146,7 +146,7 @@ AmegakureWotan features a robust test suite that validates OPSEC fail-safes, gra
 
 To run the full suite (Smoke Tests + Pytest):
 ```bash
-karasu test
+amewotan test
 # or if running from source:
 make test
 ```

@@ -34,7 +34,7 @@ La arquitectura de AmegakureWotan se organiza en seis capas, consolidando Amegak
    Hermes Agent actúa como orquestador raíz, con un perfil doctrinal Odin que define: estilo de planificación, límite de delegaciones, reglas de mínima superficie, prohibición de contenido ofensivo y prioridad de evidencias sobre "intuiciones" del modelo. Hermes crea subagentes con los nombres ya usados en AmegakureWotan (Heimdall, Huginn, Tyr, Hel, Mimir, etc.), mapeados a skills y herramientas MCP de AmegakureWotan.[^1]
 
 3. **L2 – MCP único de AmegakureWotan**  
-   Un **servidor MCP consolidado** expone las capacidades OSINT/DFIR como herramientas tipadas, combinando el diseño del MCP OSINT de SENTINEL con el motor interno de AmegakureWotan. No se exponen múltiples MCP separados: desde Hermes todo se ve como `amegakurewotan.mcp` con diferentes herramientas (`recon.passive_scan`, `karasu.graph_query`, `dfir.velociraptor_hunt`, etc.).[^1]
+   Un **servidor MCP consolidado** expone las capacidades OSINT/DFIR como herramientas tipadas, combinando el diseño del MCP OSINT de SENTINEL con el motor interno de AmegakureWotan. No se exponen múltiples MCP separados: desde Hermes todo se ve como `amegakurewotan.mcp` con diferentes herramientas (`recon.passive_scan`, `amewotan.graph_query`, `dfir.velociraptor_hunt`, etc.).[^1]
 
 4. **L3 – Motores OSINT/DFIR subyacentes**  
    Contenedores y binarios endurecidos (Docker/K8s) para: BBOT, Axiom‑lite, Kùzu (grafo AmegakureWotan), Neo4j (Graph‑RAG), SpiderFoot CLI, theHarvester, Amass, Recon‑ng, Shodan CLI, Censys CLI, Maltego CE (via scripts/headless), Nuclei, Volatility 3, Velociraptor, Autopsy/Sleuth Kit. Estos no son visibles directamente al LLM: solo se invocan a través del MCP consolidado con parámetros validados.[^3][^6][^2][^1]
@@ -43,7 +43,7 @@ La arquitectura de AmegakureWotan se organiza en seis capas, consolidando Amegak
    Neo4j Community como grafo central para Graph‑RAG, Kùzu como grafo embebido de AmegakureWotan para consultas locales y pipelines específicos de análisis de relaciones, y un vector store ligero (SQLite+FAISS) para embeddings cuando sea necesario. Esta capa evita la alucinación de vulnerabilidades o relaciones inexistentes: las respuestas del LLM se basan en consultas explícitas al grafo.[^1]
 
 6. **L5 – Interfaces de Operador e Integración Industrial**  
-   TUI de AmegakureWotan (heredada de AmegakureWotan), CLI `karasu`/`amewotan`, dashboards de SOC/DFIR, integraciones con SIEM/SOAR y QTSP eIDAS para anclaje de cadena de custodia. No se exponen paneles web públicos; cualquier UI web se aloja en redes restringidas.[^1]
+   TUI de AmegakureWotan (heredada de AmegakureWotan), CLI `amewotan`/`amewotan`, dashboards de SOC/DFIR, integraciones con SIEM/SOAR y QTSP eIDAS para anclaje de cadena de custodia. No se exponen paneles web públicos; cualquier UI web se aloja en redes restringidas.[^1]
 
 
 ### 4.2 Módulos funcionales principales
@@ -82,7 +82,7 @@ El archivo `timeline.jsonl` es append‑only, con `fsync` sincrono tras cada esc
 
 ### 5.2 Integración del ledger de AmegakureWotan
 
-El "Forensic Audit Ledger" original de AmegakureWotan se adapta para convertirse en un **frontend** del `timeline.jsonl` global: sus operaciones de hash HMAC‑SHA512 se implementan llamando al módulo `forensics.py`, de forma que no existan dos cadenas paralelas. El CLI `karasu audit verify` se mapea a `ChainOfCustody.verify_chain`, y los comandos `karasu orchestrate`, `karasu export`, `karasu darkweb` y otros generan eventos con `collector_id="karasu-agent"` o similares, asegurando trazabilidad cruzada con el resto de la plataforma.[^1]
+El "Forensic Audit Ledger" original de AmegakureWotan se adapta para convertirse en un **frontend** del `timeline.jsonl` global: sus operaciones de hash HMAC‑SHA512 se implementan llamando al módulo `forensics.py`, de forma que no existan dos cadenas paralelas. El CLI `amewotan audit verify` se mapea a `ChainOfCustody.verify_chain`, y los comandos `amewotan orchestrate`, `amewotan export`, `amewotan darkweb` y otros generan eventos con `collector_id="amewotan-agent"` o similares, asegurando trazabilidad cruzada con el resto de la plataforma.[^1]
 
 Para análisis internos rápidos, AmegakureWotan puede mantener índices adicionales del ledger (por ejemplo, en SQLite o Kùzu), pero estos se consideran derivados; el registro probatorio oficial siempre es `timeline.jsonl` bajo `forensics.py` con anclaje opcional a eIDAS/RFC 3161 por lote.[^1]
 

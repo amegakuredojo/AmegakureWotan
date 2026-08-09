@@ -10,7 +10,7 @@ Propósito:
     consolidado (gateway por dominios bajo gobernanza GELSI), gestión de RoE y
     verificación de la cadena de custodia (timeline.jsonl).
 
-    NO reemplaza el CLI `amewotan` histórico: lo complementa. `karasu` sigue
+    NO reemplaza el CLI `amewotan` histórico: lo complementa. `amewotan` sigue
     operando el harness OSINT original; `amewotan` opera la capa consolidada
     con GELSI/RoE/DFIR/defense.
 """

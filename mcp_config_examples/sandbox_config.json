@@ -18,8 +18,8 @@
         "-e", "KARASU_SILENT_BOOTSTRAP=true",
         "-e", "AMEWOTAN_OPSEC_BYPASS_TOR=true",
         "-e", "KARASU_MCP_TOR_TIMEOUT=3",
-        "-e", "SANDBOX_DATA_PATH=/tmp/karasu_sandbox",
-        "karasu-mcp",
+        "-e", "SANDBOX_DATA_PATH=/tmp/amewotan_sandbox",
+        "amewotan-mcp",
         "run"
       ]
     }

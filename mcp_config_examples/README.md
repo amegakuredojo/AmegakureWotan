@@ -67,8 +67,8 @@ docker compose -f docker-compose.yml -f docker-compose.sandbox.yml \
   --profile sandbox-mcp run --rm -i --no-TTY --no-deps \
   -e KARASU_SILENT_BOOTSTRAP=true \
   -e AMEWOTAN_OPSEC_BYPASS_TOR=true \
-  -e SANDBOX_DATA_PATH=/tmp/karasu_sandbox \
-  karasu-mcp run
+  -e SANDBOX_DATA_PATH=/tmp/amewotan_sandbox \
+  amewotan-mcp run
 ```
 
 O usar `sandbox_config.json` directamente en tu cliente MCP.
@@ -82,9 +82,9 @@ O usar `sandbox_config.json` directamente en tu cliente MCP.
 | `AMEWOTAN_OPSEC_BYPASS_TOR` | `false` | `true` = Sandbox mode, Tor no requerido |
 | `KARASU_SILENT_BOOTSTRAP` | `false` | `true` = Suprime banners (necesario para MCP) |
 | `KARASU_MCP_TOR_TIMEOUT` | `10` | Segundos máx esperando Tor en modo MCP |
-| `SANDBOX_DATA_PATH` | `/tmp/karasu_sandbox` | Path de datos en modo sandbox |
+| `SANDBOX_DATA_PATH` | `/tmp/amewotan_sandbox` | Path de datos en modo sandbox |
 | `SANDBOX_SEARXNG_URL` | `http://localhost:8080/search` | URL SearXNG en sandbox |
-| `KUZU_DATABASE_PATH` | `/data/karasu_vault.kuzu` | Path de base de datos Kùzu |
+| `KUZU_DATABASE_PATH` | `/data/amewotan_vault.kuzu` | Path de base de datos Kùzu |
 
 ---
 

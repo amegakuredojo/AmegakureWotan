@@ -73,7 +73,7 @@ echo -e "\n${YELLOW}[*] Setting up global CLI wrapper...${NC}"
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-WRAPPER_PATH="$INSTALL_DIR/karasu"
+WRAPPER_PATH="$INSTALL_DIR/amewotan"
 CURRENT_DIR=$(pwd)
 
 cat > "$WRAPPER_PATH" << 'EOF'
@@ -84,7 +84,7 @@ cd "$PROJECT_DIR" || exit 1
 if [ "$1" == "shell" ] || [ "$1" == "test" ]; then
     make "$@"
 else
-    docker compose run --rm -v "$PROJECT_DIR/src:/app/src:z" karasu "$@"
+    docker compose run --rm -v "$PROJECT_DIR/src:/app/src:z" amewotan "$@"
 fi
 EOF
 
@@ -98,12 +98,12 @@ echo -e "${GREEN}[✔] Wrapper installed at $WRAPPER_PATH${NC}"
 echo -e "\n${BLUE}======================================================================${NC}"
 echo -e "${GREEN}AmegakureWotan is now fully operational!${NC}"
 echo -e "You can now run the tool from ANYWHERE in your terminal using:"
-echo -e "  ${YELLOW}karasu --help${NC}"
+echo -e "  ${YELLOW}amewotan --help${NC}"
 echo -e ""
 echo -e "Examples:"
-echo -e "  karasu recon scanme.nmap.org"
-echo -e "  karasu graph view"
-echo -e "  karasu shell"
+echo -e "  amewotan recon scanme.nmap.org"
+echo -e "  amewotan graph view"
+echo -e "  amewotan shell"
 echo -e "${BLUE}======================================================================${NC}"
 
 # Remind to add to PATH if not there

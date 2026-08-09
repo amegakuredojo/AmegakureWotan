@@ -146,7 +146,7 @@ anyio==4.14.1 \
     --hash=sha256:8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e
     # via
     #   httpx
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langsmith
     #   mcp
     #   sse-starlette
@@ -163,7 +163,7 @@ attrs==26.1.0 \
 beautifulsoup4==4.15.0 \
     --hash=sha256:288e3ca7d54b06f2ac191970bc275c1939cb46d450b255bf6718b04aa37ab4f7 \
     --hash=sha256:d6f88de62e1d4e38ecb1077eb9724cd0eff29d2a08ca16a401e9b9e93f117cf9
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 certifi==2026.6.17 \
     --hash=sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432 \
     --hash=sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db
@@ -549,7 +549,7 @@ filelock==3.29.5 \
 freezegun==1.5.5 \
     --hash=sha256:ac7742a6cc6c25a2c35e9292dfd554b897b517d2dec26891a2e8debf205cb94a \
     --hash=sha256:cd557f4a75cf074e84bc374249b9dd491eaeacd61376b9eb3c423282211619d2
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 frozenlist==1.8.0 \
     --hash=sha256:0325024fe97f94c41c08872db482cf8ac4800d80e79222c6b0b7b162d5b13686 \
     --hash=sha256:032efa2674356903cd0261c4317a561a6850f3ac864a63fc1583147fb05a79b0 \
@@ -812,7 +812,7 @@ httpx[socks]==0.28.1 \
     --hash=sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad
     # via
     #   huggingface-hub
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langgraph-sdk
     #   langsmith
     #   mcp
@@ -899,11 +899,11 @@ kuzu==0.11.3 \
     --hash=sha256:eb5c165bc5838059e498e8325939fc6bac075e1941157e8df6ebdd710135d43b \
     --hash=sha256:ef094001d319804fcc8eb72775a184f1119d84af1bace29581a003bd806c36cd \
     --hash=sha256:ffff1f2fdf4fc570ddfefbe1d5918d3f53239eb38dd5c26358baa7d07e29a0d2
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 langchain==1.3.11 \
     --hash=sha256:7ae011f95a09b22feea1e8ae4e43f0b6164aebf4c61b8ad845b45f72ff3a90a2 \
     --hash=sha256:f3cf9cd4d2329b1a03eb8fd92b9d73e4e58a4d52570d67725fc77fbe0f104b32
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 langchain-classic==1.0.8 \
     --hash=sha256:1a11ea7fbe630c4f2af2f3873d27718ceac9488cf32d0821030be7cf039a6213 \
     --hash=sha256:ada0cc341a8a5b80fb24d73bdfaaeb849056ee2d8a41cc468355163fd3667484
@@ -911,7 +911,7 @@ langchain-classic==1.0.8 \
 langchain-community==0.4.2 \
     --hash=sha256:84dd8c5122532394d5b6849a5fc9995ef28e4f77227daeb09f24b3d942e9e466 \
     --hash=sha256:a99308160d53d7e9b5965ee665e5173709914338210089fd5788ad724432c21e
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 langchain-core==1.4.8 \
     --hash=sha256:5bf1f8411077c904182ad8f975943d36adcbf579c4e017b3a118b719229ebf9a \
     --hash=sha256:d84c28b05e3ba8d4271d0827aad5b592ccdaaf986e76768c23503f0a2045e8aa
@@ -938,7 +938,7 @@ langgraph==1.2.7 \
     --hash=sha256:249349a5d6a32cb0aa2304a8fb6529bd0cf56db8780d21db9e086e5383668f89 \
     --hash=sha256:dcdf5b441bf8c7c7c154e603b302c9dbfbfd2d11e1b7ae7d93a5aba979dc87bd
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langchain
 langgraph-checkpoint==4.1.1 \
     --hash=sha256:25d29144b082827218e7bc3f1e9b0566a4bb007895cd6cc26f66a8428739f56e \
@@ -1100,7 +1100,7 @@ lxml==6.1.1 \
     --hash=sha256:fe0306bd29505a9177aac19f1877174b0e7422c222a59f70b2cd41633448c3dc \
     --hash=sha256:ff3f333630ab480244a1bff72043e511a91eb22e7595dead8653ee5612dd8f3d \
     --hash=sha256:ffecec8eb889b58ba9be5b95fb1cc78e22ea8eedea38e8736a1568fe1979250e
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 markdown-it-py[linkify]==4.2.0 \
     --hash=sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49 \
     --hash=sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a
@@ -1202,7 +1202,7 @@ markupsafe==3.0.3 \
 mcp==1.28.1 \
     --hash=sha256:2726bca5e7193f61c5dde8b12500a6de2d9acf6d1a1c0be9e8c2e706437991df \
     --hash=sha256:d51e36a5f5644faea4f85ea649bfffa6bc6c26770d42798ad6a3de3d2ba69683
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 mdit-py-plugins==0.6.1 \
     --hash=sha256:214c82fb2ac524472ab6a5bcab1de80f73b50443e187f401bfd77efbc7c6481d \
     --hash=sha256:a2bca0f039f39dbd35fb74ae1b5f998608c437463371f0ff7f49a19a17a114d0
@@ -1782,7 +1782,7 @@ pydantic==2.13.4 \
     --hash=sha256:45a282cde31d808236fd7ea9d919b128653c8b38b393d1c4ab335c62924d9aba \
     --hash=sha256:c40756b57adaa8b1efeeced5c196f3f3b7c435f90e84ea7f443901bec8099ef6
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langchain
     #   langchain-classic
     #   langchain-core
@@ -1916,7 +1916,7 @@ pydantic-settings==2.14.2 \
     --hash=sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440 \
     --hash=sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langchain-community
     #   mcp
 pygments==2.20.0 \
@@ -1935,24 +1935,24 @@ pysocks==1.7.1 \
     --hash=sha256:2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5 \
     --hash=sha256:3f8804571ebe159c380ac6de37643bb4685970655d3bba243530d6558b799aa0
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   requests
     #   urllib3
 pytest==9.1.1 \
     --hash=sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313 \
     --hash=sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   pytest-asyncio
     #   pytest-cov
 pytest-asyncio==1.4.0 \
     --hash=sha256:933ca923a23075a87fb7070c0ec272a6848489824d887c85c812670932835aa1 \
     --hash=sha256:c6c0d2259945122819f171a32ecea2c349ead889ee28176caaf492143424be42
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 pytest-cov==7.1.0 \
     --hash=sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2 \
     --hash=sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 python-dateutil==2.9.0.post0 \
     --hash=sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3 \
     --hash=sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427
@@ -1966,7 +1966,7 @@ python-dotenv==1.2.2 \
 python-gnupg==0.5.6 \
     --hash=sha256:5743e96212d38923fc19083812dc127907e44dbd3bcf0db4d657e291d3c21eac \
     --hash=sha256:b5050a55663d8ab9fcc8d97556d229af337a87a3ebebd7054cbd8b7e2043394a
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 python-multipart==0.0.32 \
     --hash=sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e \
     --hash=sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23
@@ -2060,7 +2060,7 @@ requests[socks]==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0 \
     --hash=sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   langchain-classic
     #   langchain-community
     #   langsmith
@@ -2080,7 +2080,7 @@ rich==15.0.0 \
     --hash=sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb \
     --hash=sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36
     # via
-    #   karasugakure (pyproject.toml)
+    #   amegakurewotan (pyproject.toml)
     #   smolagents
     #   textual
     #   typer
@@ -2207,7 +2207,7 @@ rpds-py==2026.6.3 \
 selenium==4.45.0 \
     --hash=sha256:1fd9d0dc08192b2f8100e264ed720f83b05d2dd3a7feff673df04e0c7580df4b \
     --hash=sha256:563f0c4102f112df1cda30d46ce6d177b2e4a7a3d4b0756902d5dc84d3a8a365
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 shellingham==1.5.4 \
     --hash=sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686 \
     --hash=sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de
@@ -2219,7 +2219,7 @@ six==1.17.0 \
 smolagents==1.26.0 \
     --hash=sha256:4ec92313265f9cfbcabfc88e192b4bc4505f8475dc5f33dc872062fc567037bd \
     --hash=sha256:70e1cfb1576f782da93190ee31d9bb2659e5ca4bd84fda0c412e1f20498f28b6
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 sniffio==1.3.1 \
     --hash=sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2 \
     --hash=sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc
@@ -2312,7 +2312,7 @@ starlette==1.3.1 \
     #   sse-starlette
 stem==1.8.2 \
     --hash=sha256:83fb19ffd4c9f82207c006051480389f80af221a7e4783000aedec4e384eb582
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 tenacity==9.1.4 \
     --hash=sha256:6095a360c919085f28c6527de529e76a06ad89b23659fa881ae0649b867a9d55 \
     --hash=sha256:adb31d4c263f2bd041081ab33b498309a57c77f9acf2db65aadf0898179cf93a
@@ -2322,11 +2322,11 @@ tenacity==9.1.4 \
 textual==8.2.8 \
     --hash=sha256:267375fd402dc8d981457212efa71f0e3365fd17bba144ba9bb3ed7563cb374a \
     --hash=sha256:3f106a9fbc73e39dd266c9712432087de78a6d644084c7c241d6a25c3169115b
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 tldextract==5.3.1 \
     --hash=sha256:6bfe36d518de569c572062b788e16a659ccaceffc486d243af0484e8ecf432d9 \
     --hash=sha256:a72756ca170b2510315076383ea2993478f7da6f897eef1f4a5400735d5057fb
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 tqdm==4.68.3 \
     --hash=sha256:00dfa48452b6b6cfae3dd9885636c23d3422d1ec97c66d96818cbd5e0821d482 \
     --hash=sha256:39832cc2def2789a6f29df83f172db7416cea70052c0907a57801c5f2fdccb03
@@ -2344,7 +2344,7 @@ trio-websocket==0.12.2 \
 typer==0.26.8 \
     --hash=sha256:3512ca79ac5c11113414b36e80281b872884477722440691c89d1112e321a49c \
     --hash=sha256:c244a6bd558886fe3f8780efb6bdd28bb9aff005a94eedebaa5cb32926fe2f7e
-    # via karasugakure (pyproject.toml)
+    # via amegakurewotan (pyproject.toml)
 typing-extensions==4.16.0 \
     --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8 \
     --hash=sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5

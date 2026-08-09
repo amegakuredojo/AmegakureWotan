@@ -26,7 +26,7 @@ networks:
 volumes:
   evidence_vault:
     driver: local
-  karasu_sessions:
+  amewotan_sessions:
     driver: local
 
 # ─── SERVICIOS ──────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ services:
   # ── TOR PROXY: Egress OPSEC Layer ─────────────────────────────────────────
   tor-proxy:
     image: peterdavehello/tor-socks-proxy:latest
-    container_name: karasu-tor
+    container_name: amewotan-tor
     restart: unless-stopped
     networks:
       internal:
@@ -63,7 +63,7 @@ services:
   # ── SEARXNG: Local OSINT Search Gateway ────────────────────────────────────
   searxng:
     image: searxng/searxng:latest
-    container_name: karasu-searxng
+    container_name: amewotan-searxng
     restart: unless-stopped
     networks:
       internal:
@@ -87,7 +87,7 @@ services:
         IMAGE_BUILD_HASH: "${AMEWOTAN_IMAGE_HASH:-dev}"
         BUILD_DATE: "${BUILD_DATE:-unknown}"
     image: amegakurewotan/amewotan:latest
-    container_name: karasu-core
+    container_name: amewotan-core
     restart: "no"
     networks:
       internal:
@@ -114,7 +114,7 @@ services:
       AMEWOTAN_OPSEC_BYPASS_TOR: "${AMEWOTAN_OPSEC_BYPASS_TOR:-false}"
     volumes:
       - evidence_vault:/data
-      - karasu_sessions:/data/sessions
+      - amewotan_sessions:/data/sessions
     stdin_open: true
     tty: true
     cap_drop:
@@ -130,12 +130,12 @@ services:
     command: ["--help"]
 
   # ── KARASU MCP: Servidor MCP stdio para AGY / OpenCode ────────────────────
-  # Uso: docker compose run --rm -i --no-TTY karasu-mcp run
+  # Uso: docker compose run --rm -i --no-TTY amewotan-mcp run
   # Este servicio está optimizado para MCP: bootstrap silencioso, timeout Tor
   # reducido a 10s, y no fuerza dependencias (se asume stack ya levantado).
   amegakurewotan-mcp:
     image: amegakurewotan/amewotan:latest
-    container_name: karasu-mcp
+    container_name: amewotan-mcp
     restart: "no"
     profiles:
       - mcp
@@ -160,7 +160,7 @@ services:
       AMEWOTAN_OPSEC_BYPASS_TOR: "${AMEWOTAN_OPSEC_BYPASS_TOR:-false}"
     volumes:
       - evidence_vault:/data
-      - karasu_sessions:/data/sessions
+      - amewotan_sessions:/data/sessions
     stdin_open: true
     tty: false
     cap_drop:

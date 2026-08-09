@@ -1,7 +1,7 @@
 # Wayback downloader placeholder skill
 import sys
 import json
-from karasugakure.adapters.archive import ArchiveAdapter
+from amegakurewotan.adapters.archive import ArchiveAdapter
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

@@ -1,7 +1,7 @@
 # Report builder skill
 import sys
 import json
-from karasugakure.reports.dossier import DossierCompiler
+from amegakurewotan.reports.dossier import DossierCompiler
 
 if __name__ == "__main__":
     compiler = DossierCompiler(case_name="automated")

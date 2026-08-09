@@ -9,7 +9,7 @@ import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 // Helper to run python CLI in .venv
 async function runKarasu(pi: ExtensionAPI, args: string[], signal?: AbortSignal) {
 	try {
-		const res = await pi.exec("./.venv/bin/karasu", args, { signal });
+		const res = await pi.exec("./.venv/bin/amewotan", args, { signal });
 		if (res.code === 0) {
 			return {
 				content: [{ type: "text" as const, text: res.stdout }],
@@ -23,7 +23,7 @@ async function runKarasu(pi: ExtensionAPI, args: string[], signal?: AbortSignal)
 		}
 	} catch (err: any) {
 		return {
-			content: [{ type: "text" as const, text: `Failed to execute karasu: ${err.message || err}` }],
+			content: [{ type: "text" as const, text: `Failed to execute amewotan: ${err.message || err}` }],
 			details: { success: false, error: String(err) }
 		};
 	}
@@ -31,7 +31,7 @@ async function runKarasu(pi: ExtensionAPI, args: string[], signal?: AbortSignal)
 
 // 1. Recon Tool
 const reconTool = defineTool({
-	name: "karasu_recon",
+	name: "amewotan_recon",
 	label: "Karasu Recon",
 	description: "Run infrastructure and surface reconnaissance on a domain or IP (Heimdall).",
 	parameters: Type.Object({
@@ -44,7 +44,7 @@ const reconTool = defineTool({
 
 // 2. Humint Tool
 const humintTool = defineTool({
-	name: "karasu_humint",
+	name: "amewotan_humint",
 	label: "Karasu Humint",
 	description: "Scan identity, profiles, and digital footprint for an alias/username (Loki).",
 	parameters: Type.Object({
@@ -57,7 +57,7 @@ const humintTool = defineTool({
 
 // 3. Darkweb Tool
 const darkwebTool = defineTool({
-	name: "karasu_darkweb",
+	name: "amewotan_darkweb",
 	label: "Karasu Darkweb",
 	description: "Query darkweb onion forums, leak databases, and marketplaces (Hel).",
 	parameters: Type.Object({
@@ -70,7 +70,7 @@ const darkwebTool = defineTool({
 
 // 4. Correlate Tool
 const correlateTool = defineTool({
-	name: "karasu_correlate",
+	name: "amewotan_correlate",
 	label: "Karasu Correlate",
 	description: "Execute link correlation and relational analysis on active nodes (Fenrir).",
 	parameters: Type.Object({}),
@@ -81,7 +81,7 @@ const correlateTool = defineTool({
 
 // 5. Graph Query Tool
 const graphQueryTool = defineTool({
-	name: "karasu_graph_query",
+	name: "amewotan_graph_query",
 	label: "Karasu Graph Query",
 	description: "Query the relational graph using natural language or Cypher statements (Norn + Mimir).",
 	parameters: Type.Object({
@@ -94,7 +94,7 @@ const graphQueryTool = defineTool({
 
 // 6. Report Tool
 const reportTool = defineTool({
-	name: "karasu_report",
+	name: "amewotan_report",
 	label: "Karasu Report",
 	description: "Generate a markdown investigation dossier summarizing validated connections.",
 	parameters: Type.Object({}),
