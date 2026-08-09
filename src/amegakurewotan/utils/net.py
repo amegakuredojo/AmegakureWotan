@@ -80,6 +80,14 @@ def make_tor_request(
     if "Accept-Language" not in req_headers:
         req_headers["Accept-Language"] = "en-US,en;q=0.9"
         
+    # RATE LIMIT DURO: máx 13 req/s (config), SIN ráfagas. Grifo global compartido
+    # por todos los agentes concurrentes. Se aplica ANTES del jitter y del envío,
+    # de modo que ninguna ruta de salida pueda exceder el caudal del objetivo.
+    from amegakurewotan.utils.ratelimit import get_rate_limiter
+    slept = get_rate_limiter().acquire()
+    if slept > 0:
+        logger.debug(f"[RATE-LIMIT] Esperó {slept:.3f}s para respetar el caudal máximo de salida.")
+
     # OPSEC Jitter: Exponential delay to mimic human behavior and evade WAF rate limits
     # Mean delay of 2.5 seconds, capped at 6.0 seconds.
     delay = random.expovariate(1.0 / 2.5)

@@ -18,6 +18,10 @@ class OpsecSettings(BaseSettings):
     tor_control_port: int = 9051
     user_agent_rotation: bool = True
     tls_fingerprint_policy: str = "random"
+    # Rate limit DURO de salida (requests/segundo) para TODA petición HTTP/S.
+    # Doctrina AmegakureDojo: máximo 13 req/s, SIN ráfagas — nunca saturar la red
+    # del objetivo. Aplicado en utils.net vía un token-bucket global thread-safe.
+    max_requests_per_second: float = 13.0
 
 # Dentro del contenedor: AMEWOTAN_DATA_DIR=/data
 # En host local: ~/.amegakurewotan
