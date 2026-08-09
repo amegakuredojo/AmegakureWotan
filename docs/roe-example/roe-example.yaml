@@ -1,0 +1,14 @@
+roe_id: roe-example-001
+authority: "Autoridad de ejemplo (REEMPLAZAR en producción)"
+scope:
+  - "target-authorized.example.com"
+  - "*.target-authorized.example.com"
+exclusions:
+  - "prod-secret.target-authorized.example.com"
+allowed_actions:
+  - passive
+  - active
+  - dfir
+jurisdiction: "EU/eIDAS"
+pii_policy: minimize
+social_eng: defensive_only

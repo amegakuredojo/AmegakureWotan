@@ -300,6 +300,11 @@ class ScopeRegistry:
         """
         True si `value` (target) está autorizado por la RoE `roe_token` y esta
         está temporalmente vigente. Deny-by-default ante RoE inexistente.
+
+        Si AMEWOTAN_REQUIRE_ROE_SIGNATURE=true (modo producción), una RoE cuya
+        firma NO se verificó se RECHAZA explícitamente: no se opera con RoE
+        no autenticada. En modo dev/sandbox (default) se permite firma no
+        verificada para no frenar el desarrollo.
         """
         roe = self.get(roe_token)
         if roe is None:
@@ -307,6 +312,13 @@ class ScopeRegistry:
             return False
         if not roe.is_temporally_valid():
             logger.warning("RoE '%s' fuera de ventana temporal.", roe_token)
+            return False
+        require_sig = os.environ.get("AMEWOTAN_REQUIRE_ROE_SIGNATURE", "false").lower() == "true"
+        if require_sig and not roe.signature_verified:
+            logger.warning(
+                "RoE '%s' NO verificada y AMEWOTAN_REQUIRE_ROE_SIGNATURE=true — "
+                "operación denegada (RoE no autenticada).", roe_token,
+            )
             return False
         return roe.is_target_in_scope(value)
 
