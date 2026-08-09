@@ -238,6 +238,8 @@ def test_report_ok(monkeypatch, tmp_data_dir):
 def test_resume_no_sessions(monkeypatch, tmp_data_dir):
     db = _fake_db(False)
     _patch_agents(monkeypatch, db)
+    monkeypatch.setattr(cli, "glob", MagicMock())
+    cli.glob.glob.return_value = []
     r = runner.invoke(cli.app, ["resume"])
     assert r.exit_code == 1
     assert "No sessions" in r.stdout
