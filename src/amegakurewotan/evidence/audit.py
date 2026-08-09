@@ -54,31 +54,24 @@ class ForensicAuditLedger:
             return f.read()
 
     def _get_last_entry_hash(self) -> str:
-        """Retrieves the hash of the last entry in the ledger to maintain hash-chain links."""
-        try:
-            from amegakurewotan.graph.db import get_db
-            db = get_db()
-            if db.check_connection():
-                query = "MATCH (r:AuditRecord) RETURN r.record_hash AS last_hash ORDER BY r.timestamp DESC LIMIT 1"
-                res = db.execute_query(query)
-                if res and res[0].get("last_hash"):
-                    return res[0]["last_hash"]
-        except Exception as e:
-            logger.warning(f"Failed to query last ledger record hash from Kùzu: {e}")
+        """Retrieves the hash of the last entry in the ledger to maintain hash-chain links.
 
-        if not self.ledger_path.exists() or self.ledger_path.stat().st_size == 0:
-            return "0" * 64
-            
-        try:
-            with open(self.ledger_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                if lines:
-                    last_line = lines[-1].strip()
-                    if last_line:
-                        record = json.loads(last_line)
-                        return record.get("record_hash", "0" * 64)
-        except Exception as e:
-            logger.warning(f"Failed to trace hash-chain from ledger file: {e}")
+        FUENTE DE VERDAD: el archivo local del ledger, SIEMPRE. El hash previo se
+        deriva exclusivamente de la cadena de archivo; NO se consulta Kùzu, porque
+        una réplica de DB desincronizada corruptaría la cadena canónica de archivo
+        (el ledger de archivo debe ser autónomo y determinista).
+        """
+        if self.ledger_path.exists() and self.ledger_path.stat().st_size > 0:
+            try:
+                with open(self.ledger_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()
+                    if lines:
+                        last_line = lines[-1].strip()
+                        if last_line:
+                            record = json.loads(last_line)
+                            return record.get("record_hash", "0" * 64)
+            except Exception as e:
+                logger.warning(f"Failed to trace hash-chain from ledger file: {e}")
         return "0" * 64
 
 

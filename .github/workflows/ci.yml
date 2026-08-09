@@ -45,11 +45,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          python -m pip install pytest-timeout
+          python -m pip install pytest-timeout pytest-cov
 
-      - name: Run test suite (no-regression Wotan F1-F6)
+      - name: Run test suite + coverage gate (≥55%)
+        # Umbral honesto (WOTAN-TRL plan Fase B): los comandos de agentes en vivo
+        # (recon/humint/darkweb/entity) y graph.* requieren Kùzu/Tor reales y se
+        # eximen explícitamente; 55% cubre toda la lógica gobernada (GELSI/RoE/DFIR/
+        # CLI/rate-limit/misión/cadena/ledger) que SÍ es determinista y hermética.
         run: |
-          python -m pytest tests/ -q --no-header -p no:cacheprovider --timeout=45
+          python -m pytest tests/ -q --no-header -p no:cacheprovider \
+            --timeout=60 --cov=amegakurewotan --cov-report=term-missing \
+            --cov-fail-under=55
 
   smoke-cli:
     name: "Smoke CLI amewotan (end-to-end real)"

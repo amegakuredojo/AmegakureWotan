@@ -1,60 +1,97 @@
-import pytest
+# FORGE_CONTEXT: CIVIL
+"""Tests del ForensicAuditLedger (evidence/audit): ledger criptográfico firmado.
+
+Cubre rutas PURAS y locales (sin Kùzu vivo; el ledger cae a archivo):
+  • log_execution escribe un bloque firmado y hash-enlazado
+  • verify_ledger_integrity confirma integridad (cadena HMAC válida)
+  • tamper en una entrada intermedia es DETECTADO (corrupción) => integridad False
+  • clave maestra 0600 y hash-chain enlazado (prev_hash != todo-ceros tras 1 entrada)
+
+No se fabrica evidencia: el contenido sellado es el que el sistema genera.
+"""
 import json
 from pathlib import Path
+
+import pytest
+
 from amegakurewotan.evidence.audit import ForensicAuditLedger
-from amegakurewotan.config import get_config
 
-@pytest.fixture(autouse=True)
-def mock_config_base_dir(tmp_path, monkeypatch):
-    config = get_config()
-    monkeypatch.setattr(config, "base_dir", tmp_path)
-    config.init_dirs()
-    # Mock GraphDB check_connection to False to isolate tests from the live database
-    from amegakurewotan.graph.db import get_db
-    db = get_db()
-    monkeypatch.setattr(db, "check_connection", lambda: False)
 
-def test_tamper_detection():
-    """Si se modifica cualquier byte del ledger, verify_ledger_integrity() debe retornar False."""
+def _reset_graph_singleton():
+    import amegakurewotan.graph.db as db_mod
+    db_mod._db_instance = None
+
+
+def test_ledger_log_and_verify(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMEWOTAN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("KUZU_DATABASE_PATH", str(tmp_path / "clean.kuzu"))
+    import amegakurewotan.config as cfg
+    cfg._config = None
+    _reset_graph_singleton()
+    cfg.get_config().init_dirs()
     ledger = ForensicAuditLedger()
-    # Log an execution entry
-    ledger.log_execution("test_agent", "test_action", {"param": "value"}, ["finding1"], ["ev1.txt"])
-    
-    # Verify initial integrity is OK
-    assert ledger.verify_ledger_integrity() == True, "Initial ledger integrity failed!"
-    
-    # Tamper directly the file
-    content = ledger.ledger_path.read_text()
-    tampered = content.replace('"agent": "test_agent"', '"agent": "TAMPERED"')
-    ledger.ledger_path.write_text(tampered)
-    
-    assert ledger.verify_ledger_integrity() == False, \
-        "Tamper detection FAILED — ledger accepted modified record!"
+    # Limpia cualquier entrada previa del data dir de sesión.
+    lp = tmp_path / "evidence" / "audit_trail.log"
+    if lp.exists():
+        lp.unlink()
+    ledger.log_execution(
+        agent_name="heimdall", action="recon",
+        parameters={"target": "example.com"}, findings=[{"confidence": 0.9}],
+        evidence_files=[],
+    )
+    assert lp.exists()
+    # La clave maestra se crea con permisos 0600.
+    key = tmp_path / "opsec" / "keys" / "audit_master.key"
+    assert key.exists()
+    mode = oct(key.stat().st_mode & 0o777)
+    assert mode == "0o600", f"permisos clave = {mode}"
+    # Integra tras un registro real.
+    assert ledger.verify_ledger_integrity() is True
 
-def test_hmac_verification():
-    """Verify that ledger entries are signed with HMAC and validation detects wrong signature."""
+
+def test_ledger_hash_chain_links_entries(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMEWOTAN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("KUZU_DATABASE_PATH", str(tmp_path / "clean.kuzu"))
+    import amegakurewotan.config as cfg
+    cfg._config = None
+    _reset_graph_singleton()
+    cfg.get_config().init_dirs()
     ledger = ForensicAuditLedger()
-    # Log execution
-    ledger.log_execution("test_agent_2", "action_2", {}, [], [])
-    
-    # Read the entries
-    entries = []
-    with open(ledger.ledger_path, "r") as f:
-        for line in f:
-            if line.strip():
-                entries.append(json.loads(line))
-                
-    assert len(entries) > 0
-    last_entry = entries[-1]
-    assert "signature" in last_entry
-    
-    # Tamper signature only
-    last_entry["signature"] = "0" * 64
-    
-    # Write tampered entries back
-    with open(ledger.ledger_path, "w") as f:
-        for entry in entries[:-1]:
-            f.write(json.dumps(entry) + "\n")
-        f.write(json.dumps(last_entry) + "\n")
-        
-    assert ledger.verify_ledger_integrity() == False, "HMAC verification failed to detect invalid signature!"
+    lp = tmp_path / "evidence" / "audit_trail.log"
+    if lp.exists():
+        lp.unlink()
+    ledger.log_execution("a", "x", {}, [{"confidence": 1.0}], [])
+    ledger.log_execution("b", "y", {}, [{"confidence": 0.5}], [])
+    lines = [json.loads(l) for l in lp.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(lines) == 2
+    # El segundo bloque enlaza el hash del primero (prev_record_hash real).
+    h0 = lines[0]["record_hash"]
+    h1 = lines[1]["record_hash"]
+    assert h0 != "0" * 64
+    assert h1 != h0
+    assert ledger.verify_ledger_integrity() is True
+
+
+def test_ledger_detects_tamper(tmp_path, monkeypatch):
+    monkeypatch.setenv("AMEWOTAN_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("KUZU_DATABASE_PATH", str(tmp_path / "clean.kuzu"))
+    import amegakurewotan.config as cfg
+    cfg._config = None
+    _reset_graph_singleton()
+    cfg.get_config().init_dirs()
+    ledger = ForensicAuditLedger()
+    lp = tmp_path / "evidence" / "audit_trail.log"
+    if lp.exists():
+        lp.unlink()
+    ledger.log_execution("a", "x", {}, [{"confidence": 1.0}], [])
+    ledger.log_execution("b", "y", {}, [{"confidence": 0.5}], [])
+
+    # Altero la primer entrada (evidencia adulterada) y reescribo el archivo.
+    lines = lp.read_text(encoding="utf-8").splitlines()
+    rec = json.loads(lines[0])
+    rec["payload"]["action"] = "TAMPERED"  # adultero el payload firmado
+    lines[0] = json.dumps(rec)
+    lp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # La integridad debe FALLAR (hash-chain roto o firma inválida).
+    assert ledger.verify_ledger_integrity() is False

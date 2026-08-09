@@ -265,8 +265,13 @@ def hitl_approve(
 ) -> None:
     """Aprueba un ticket y re-ejecuta la acción SOLO vía gateway gobernado."""
     from amegakurewotan.mcp.gateway import get_gateway
+    from amegakurewotan.policy.hitl import HitlError
 
-    res = get_gateway().approve_hitl(ticket_id, by=by, reason=reason)
+    try:
+        res = get_gateway().approve_hitl(ticket_id, by=by, reason=reason)
+    except HitlError as e:
+        console.print(f"[red]HITL error:[/red] {e}")
+        raise typer.Exit(code=1)
     color = "green" if res.ok else "red"
     console.print(Panel.fit(
         f"[bold {color}]HITL {ticket_id} → {res.decision}[/bold {color}]  ok={res.ok}\n"
@@ -282,8 +287,13 @@ def hitl_deny(
 ) -> None:
     """Denega un ticket HITL (no ejecuta nada; se sella en la cadena)."""
     from amegakurewotan.mcp.gateway import get_gateway
+    from amegakurewotan.policy.hitl import HitlError
 
-    res = get_gateway().deny_hitl(ticket_id, reason=reason)
+    try:
+        res = get_gateway().deny_hitl(ticket_id, reason=reason)
+    except HitlError as e:
+        console.print(f"[red]HITL error:[/red] {e}")
+        raise typer.Exit(code=1)
     console.print(Panel.fit(
         f"[bold red]HITL {ticket_id} → DENIED[/bold red]\n{res.reasons[0] if res.reasons else ''}",
         title=f"hitl.deny {ticket_id}", border_style="red",
