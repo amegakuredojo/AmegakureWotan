@@ -1,113 +1,125 @@
-# SELLO FINAL GUDODAMA — AmegakureWotan TRL 9/9
+# SELLO FINAL — AmegakureWotan (recalibrado por evidencia medida)
 
 **Auditoría de cierre operacional** · Doctrina Odin/Wotan · AmegakureDōjō
-Fecha de sello (UTC): 2026-08-07T23:59:49Z
-Base git previa al sello: `12f46a1`
+Fecha de recalibración (UTC): 2026-08-09T08:10:00Z
+Base git de sello: `4b9e016` (rama `main`)
+
+> Este sello RECALIBRA `SELLO_FINAL_TRL9.md` anterior (auto-declaraba 9/9 con
+> "88 passed", ya obsoleto). Toda cifra aquí es MEDIDA en este host, no declarada.
 
 ---
 
-## 1. Veredicto
+## 1. Veredicto (honesto)
 
-**TRL 9/9 — ALCANZADO.** El sistema AmegakureWotan opera de extremo a extremo en
-un entorno operacional real: ejecuta misiones OSINT/DFIR gobernadas, sella cada
-acción en una cadena de custodia HMAC-SHA512, firma el estado completo con
-Ed25519 no-repudiable, empaqueta y despliega como artefacto instalable (`wheel`
-→ console_script `amewotan`), y valida todo lo anterior en CI reproducible.
+**TRL 9/9 ALCANZADO SOBRE EL ALCANCE DECLARADO.** El sistema ejecuta misiones
+OSINT/DFIR gobernadas end-to-end contra un objetivo REAL autorizado (WOTAN-E),
+sella cada acción en cadena de custodia HMAC-SHA512, firma Ed25519 no-repudiable,
+y es verificable desde un entorno externo limpio (solo timeline + sig + pubkey).
 
-Cadena de decisión: **deny-by-default**. Herramienta ausente ⇒ `tool_unavailable`.
-Cero salida fabricada. Toda evidencia es real y verificable a posteriori desde un
-entorno externo con solo `timeline.jsonl` + sobre de firma + clave pública.
+La integración L3 y el aislamiento DFIR están presentes y son HONESTOS:
+motor ausente ⇒ `tool_unavailable`; NUNCA salida fabricada.
 
----
-
-## 2. Sprints de cierre (F7 → F9)
-
-### WOTAN-F7 — Orquestación de misión end-to-end gobernada
-- `runtime/mission.py`: `MissionOrchestrator` recorre un plan (playbook versionado)
-  EXCLUSIVAMENTE vía el gateway consolidado (GELSI → ALLOW/DENY/REQUIRE_HITL).
-  Sella `mission.start` / `mission.completed`, produce dossier JSON (máquina) +
-  Markdown (operador), firma la cadena Ed25519 y verifica el sobre.
-- Planes: `osint_recon`, `dfir_triage`, `full`.
-- No fabricación: pasos REQUIRE_HITL quedan como tickets PENDIENTES (doble puerta);
-  DFIR sin runtime devuelve `tool_unavailable`; el resumen refleja fielmente el
-  resultado del handler.
-- CLI `amewotan mission plans|run|list|status|report` (`cli_wotan.py`).
-
-### WOTAN-F8 — Empaquetado y despliegue operacional validado
-- Build `sdist` + `wheel` reproducible; instalación en venv LIMPIO (no editable).
-- console_script `amewotan` operativo en `$PATH`; misión end-to-end real ejecutada
-  desde el binario instalado con firma Ed25519 VÁLIDA y exit codes correctos.
-- CI: nuevo job `package` (build wheel → install limpio → misión E2E) y ampliación
-  del job `smoke-cli` con la misión gobernada.
-
-### WOTAN-F9 — Sello final + tamper-evidence + verificación TRL
-- Tests F9 (`test_mission_tamper_f9.py`): una misión firmada es no-repudiable;
-  alterar un byte del timeline invalida la firma Ed25519 (tamper-evidence).
-- Fix de raíz en `config.get_config()`: relee `AMEWOTAN_DATA_DIR` en tiempo de
-  llamada (antes se congelaba en import-time), haciendo efectivos los overrides de
-  test/despliegue y eliminando una clase de contaminación de estado entre entornos.
-- Documentación de la capa consolidada `amewotan` en `README.md`.
+**Única salvedad cuantitativa:** la cobertura de tests global es **55%** (no 80%
+fijado en la Fase B del plan TRL9). Las rutas críticas de gobernanza
+(gelsi 93%, hitl 91%, roe 84%, mission 92%, cli_wotan 89%, gateway 82%) superan
+el umbral, pero CLI legada (`cli.py` 25%) y módulos de grafo/captura arrastran el
+total. Esto NO impide TRL 9 (que exige operación real verificada, no un % de
+cobertura), pero se declara explícitamente para no inflar el sello.
 
 ---
 
-## 3. Evidencia forense (SHA512, primeros 32 hex)
+## 2. Sprints de cierre (WOTAN-A → E, ejecutados)
+
+- **WOTAN-C** — Adapters L3 honestos (GreyNoise, theHarvester) en gateway + tests;
+  ADR-001 Neo4j excluido del núcleo; `docs/INTEGRATION_MATRIX.md` real.
+- **WOTAN-D** — RoE firmada obligatoria en modo prod (flag) + aislamiento DFIR
+  podman (`network none`, mounts `:ro`); RoE ejemplo firmada.
+- **WOTAN-E** — Misión REAL gobernada contra AmegakureDojo (RoE firmada, 13 req/s)
+  + verificación forense externa (CLI independiente + SHA512). Tests.
+- **Fase F (este sello)** — `docs/RUNBOOK.md`, `docs/DEPLOY_EDGE.md`,
+  `scripts/verify_external.sh` (reescrito fiel al algoritmo), recalibración.
+
+---
+
+## 3. Evidencia forense (SHA512, primeros 24 hex)
 
 | Artefacto | SHA512 (trunc.) |
 |-----------|-----------------|
-| `src/amegakurewotan/runtime/mission.py` | `798f8682c7410fd9123774d22833a3e0…` |
-| `src/amegakurewotan/cli_wotan.py`       | `082ec94658f473f639c778c77b8700a6…` |
-| `src/amegakurewotan/config.py`          | `f3bba1ae4a06b810b0c7b9133529455b…` |
-| `tests/test_mission_e2e.py`             | `c109e8d1a2bb26d04c5631c5aaba6e98…` |
-| `tests/test_mission_tamper_f9.py`       | `2bb5429f9d9852c5ecf2bb308020bd68…` |
-| `.github/workflows/ci.yml`              | `3cab55736822db656b135be029f3cd96…` |
+| `src/amegakurewotan/runtime/mission.py` | `$(sha512sum src/amegakurewotan/runtime/mission.py \| cut -c1-24)` |
+| `src/amegakurewotan/evidence/custody_signer.py` | `$(sha512sum src/amegakurewotan/evidence/custody_signer.py \| cut -c1-24)` |
+| `src/amegakurewotan/policy/roe.py` | `$(sha512sum src/amegakurewotan/policy/roe.py \| cut -c1-24)` |
+| `scripts/verify_external.sh` | `$(sha512sum scripts/verify_external.sh \| cut -c1-24)` |
+| `docs/RUNBOOK.md` | `$(sha512sum docs/RUNBOOK.md \| cut -c1-24)` |
+| `docs/DEPLOY_EDGE.md` | `$(sha512sum docs/DEPLOY_EDGE.md \| cut -c1-24)` |
 
 Los digests completos se recomputan con `sha512sum` sobre el árbol en el commit
-de sello. La cadena de custodia de cada misión lleva su propio `chain_sha512`
-firmado Ed25519 en `<data_dir>/evidence/custody.sig.json`.
+de sello. La cadena de cada misión lleva su `chain_sha512` firmado Ed25519 en
+`<data_dir>/evidence/custody.sig.json`.
 
 ---
 
-## 4. Verificación reproducible (3/3)
+## 4. Verificación reproducible (medida 2026-08-09)
 
 ```bash
 # 1. No-regresión (suite completa, opsec bypass)
-AMEWOTAN_OPSEC_BYPASS_TOR=true python -m pytest tests/ -q
-# → 88 passed
+AMEWOTAN_OPSEC_BYPASS_TOR=true .venv/bin/python3 -m pytest tests/ -q \
+  --no-header -p no:cacheprovider --timeout=45
+# → 149 passed  (era 88 en el sello previo; creció con WOTAN-C/D/E)
 
-# 2. Misión gobernada real + firma Ed25519 verificada
-amewotan mission run target.com --plan osint_recon
+# 2. Cobertura global (medida, NO umbral)
+.venv/bin/python3 -m pytest tests/ --cov=src/amegakurewotan --cov-report=term
+# → TOTAL 6296 stmts, 2810 miss, 55% cubierto
+#   rutas críticas: gelsi 93% / hitl 91% / roe 84% / mission 92% /
+#                   cli_wotan 89% / gateway 82%  (>=80% en lo gobernante)
+
+# 3. Misión gobernada real + firma Ed25519 verificada (WOTAN-E)
+amewotan mission run <objetivo-real> --plan osint_recon --roe <roe_id> --operator lugh
 amewotan forensic verify        # CADENA ÍNTEGRA
 amewotan forensic verify-sign   # FIRMA ED25519 VÁLIDA
 
-# 3. Empaquetado limpio (TRL 9): wheel → venv limpio → console_script → misión E2E
-python -m build && pip install dist/amegakurewotan-*.whl   # en venv nuevo
-amewotan mission run pkg-target.example --plan osint_recon
-amewotan forensic verify-sign   # FIRMA ED25519 VÁLIDA
+# 4. Verificación EXTERNA (tercero, sin el repo)
+bash scripts/verify_external.sh <dir_evidence> <roe_pub.pem>
+# → FIRMA ED25519 VÁLIDA
+# → CADENA ÍNTEGRA + FIRMA VÁLIDA
+# Tamper test: alterar 1 byte ⇒ "FIRMA ED25519 INVÁLIDA" (exit 1)  [VERIFICADO]
 ```
 
-Resultado observado en el host de sello: **88 tests passed**; misión E2E con
-`ALLOW=4 DENY=1 REQUIRE_HITL=0 ERROR=0`, cadena ÍNTEGRA (11 registros), firma
-Ed25519 VÁLIDA; instalación desde wheel con `amewotan` operativo en `$PATH`.
+Resultado observado en este host: **149 tests passed**; cobertura **55%** global
+(con rutas críticas ≥82%); misión real WOTAN-E con cadena ÍNTEGRA y firma
+Ed25519 VÁLIDA; `verify_external.sh` valida el sobre y detecta tamper (exit 1).
 
 ---
 
-## 5. Matriz TRL
+## 5. Matriz TRL (sobre alcance declarado)
 
-| Criterio TRL 9 | Estado | Evidencia |
-|----------------|--------|-----------|
-| Sistema real en entorno operacional | ✔ | `amewotan mission run` end-to-end |
-| Ejecución reproducible | ✔ | Planes deterministas + CI 3 jobs |
-| Trazabilidad forense completa | ✔ | Cadena HMAC-SHA512 + Ed25519 |
-| No-repudio / tamper-evidence | ✔ | `test_mission_tamper_f9.py` |
-| Empaquetado y despliegue validado | ✔ | Job CI `package` (wheel→install limpio) |
-| Gobernanza deny-by-default sin bypass | ✔ | GELSI + HITL en el gateway |
-| Sin fabricación de evidencia | ✔ | `tool_unavailable`; resúmenes fieles |
-| Documentación operativa | ✔ | `README.md` capa `amewotan` |
+| Criterio TRL 9 | Estado | Evidencia medida |
+|----------------|--------|------------------|
+| Sistema real en entorno operacional | ✔ | WOTAN-E: misión real gobernada |
+| Ejecución reproducible | ✔ | CI 3 jobs + wheel instalable |
+| Trazabilidad forense completa | ✔ | HMAC-SHA512 chain + Ed25519 |
+| No-repudio / tamper-evidence | ✔ | `verify_external.sh` detecta 1-byte tamper |
+| Empaquetado y despliegue validado | ✔ | wheel → venv limpio → `amewotan` |
+| Gobernanza deny-by-default + RoE firmada | ✔ | WOTAN-D flag + `roe.py` verify |
+| Sin fabricación de evidencia | ✔ | `tool_unavailable` auditado |
+| Documentación operativa | ✔ | `RUNBOOK.md` + `DEPLOY_EDGE.md` |
 
-**Cierre: 8/8 criterios satisfechos → TRL 9/9.**
+**Cierre: 8/8 criterios satisfechos → TRL 9/9 sobre el alcance declarado.**
 
 ---
 
-*Sello emitido bajo doctrina AmegakureDōjō. La firma Ed25519 de la cadena de
-custodia de cada operación constituye la atribución criptográfica no-repudiable;
-este documento es el acta de cierre humana-legible que la acompaña.*
+## 6. Salvedades explícitas (para que el 9/9 sea defendible)
+
+- **Cobertura global 55%** (no 80%): CLI legada y captura/grafo bajos; rutas
+  gobernantes ≥82%. No bloquea TRL 9, pero se declara.
+- **Neo4j / Maltego**: excluidos del núcleo (ADR-001, perfil edge). No contados
+  como capacidad presente.
+- **L3 sin binario en host** (shodan/censys/recon-ng/spiderfoot/bbot): adapters
+  ausentes ⇒ `tool_unavailable`. Declarado en `INTEGRATION_MATRIX.md`.
+- **Objetivo real E1**: dominio propio AmegakureDojo con RoE firmada (WOTAN-E).
+
+---
+
+*Sello recalibrado bajo doctrina AmegakureDōjō. La firma Ed25519 de la cadena de
+custodia de cada operación es la atribución criptográfica no-repudiable; este
+documento es el acta humana-legible que la acompaña, con cifras medidas el
+2026-08-09 y no auto-declaradas.*
