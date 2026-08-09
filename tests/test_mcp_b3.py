@@ -21,6 +21,7 @@ import amegakurewotan.agents.hel as hel_mod
 import amegakurewotan.agents.fenrir as fenrir_mod
 import amegakurewotan.tools.searxng as searxng_mod
 import amegakurewotan.graph.export as export_mod
+import amegakurewotan.graph.db as db_mod
 import amegakurewotan.evidence.audit as audit_mod
 import amegakurewotan.policy.gelsi as gelsi_mod
 import amegakurewotan.policy.hitl as hitl_mod
@@ -274,6 +275,34 @@ def test_handle_hitl_deny(monkeypatch):
     monkeypatch.setattr(gateway_mod, "get_gateway", lambda: gw)
     out = gov_mod.handle_hitl_tool("wotan_hitl_deny", {"ticket_id": "hitl-1"})
     assert "DENIED" in out[0].text
+
+
+def test_server_tool_kuzu_cypher_query(monkeypatch):
+    db = MagicMock()
+    db.check_connection.return_value = True
+    db.execute_query.return_value = [{"n": {"x": 1}}]
+    monkeypatch.setattr(db_mod, "get_db", lambda: db)
+    res = asyncio.run(server_mod.call_tool("kuzu_cypher_query", {"query": "MATCH (n) RETURN n"}))
+    assert res[0].type == "text"
+
+
+def test_server_tool_audit_verify(monkeypatch):
+    ledger = MagicMock()
+    ledger.verify_ledger_integrity.return_value = True
+    monkeypatch.setattr(audit_mod, "ForensicAuditLedger", lambda: ledger)
+    res = asyncio.run(server_mod.call_tool("audit_verify", {}))
+    assert "OK" in res[0].text
+
+
+def test_server_tool_export_graph(monkeypatch):
+    monkeypatch.setattr(export_mod, "export_to_json", lambda *a, **k: "/tmp/g.json")
+    res = asyncio.run(server_mod.call_tool("export_graph", {"fmt": "json"}))
+    assert res[0].type == "text"
+
+
+def test_server_tool_unknown(monkeypatch):
+    res = asyncio.run(server_mod.call_tool("no_such_tool", {}))
+    assert res[0].type == "text" and "DENY" in res[0].text.upper()
 
 
 def test_handle_hitl_unknown(monkeypatch):

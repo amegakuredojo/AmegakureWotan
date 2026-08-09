@@ -86,7 +86,7 @@ def _real_db(monkeypatch):
     db._known_tables = set(); db._known_properties = set()
     monkeypatch.setattr(db_mod, "get_db", lambda: db)
     monkeypatch.setattr(db, "connect", lambda: db._conn)
-    monkeypatch.setattr(db, "execute_query", lambda q, p=None: [])
+    monkeypatch.setattr(db, "execute_query", MagicMock(return_value=[]))
     return db
 
 
@@ -288,3 +288,74 @@ def test_isolator_stop():
     d.is_running = True
     d.stop()
     assert d.is_running is False
+
+
+# ── graph/db métodos internos (rewrite/serialize/raw_execute) ──────────────
+def test_rewrite_query_record_hash(monkeypatch):
+    db = _real_db(monkeypatch)
+    q, p = db._rewrite_query_and_params(
+        "MERGE (a:AuditRecord {record_hash: $rh}) SET a.x += $props",
+        {"rh": "h1", "props": {"k": "v"}})
+    assert "id: $rh" in q
+    assert "props_k" in p
+
+
+def test_rewrite_query_timestamp(monkeypatch):
+    db = _real_db(monkeypatch)
+    q, p = db._rewrite_query_and_params("MATCH (n) WHERE n.t = timestamp() RETURN n", {})
+    assert "__sys_timestamp" in q and "__sys_timestamp" in p
+
+
+def test_rewrite_query_set_plus_dict(monkeypatch):
+    db = _real_db(monkeypatch)
+    q, p = db._rewrite_query_and_params(
+        "MERGE (e:Evidence {hash_sha512: $h}) SET e += $meta",
+        {"h": "hh", "meta": {"a": 1, "b": "x"}})
+    assert "meta_a" in p and "meta_b" in p
+
+
+def test_serialize_kuzu_result(monkeypatch):
+    db = _real_db(monkeypatch)
+    result = MagicMock()
+    result.get_column_names.return_value = ["n"]
+    result.has_next.side_effect = [True, False]
+    result.get_next.return_value = [{"value": "x"}]
+    recs = db._serialize_kuzu_result(result)
+    assert recs == [{"n": {"value": "x"}}]
+
+
+def test_raw_execute(monkeypatch):
+    db = _real_db(monkeypatch)
+    db.raw_execute("CREATE NODE TABLE T (id STRING, PRIMARY KEY(id))")
+    assert db._conn.execute.called
+
+
+def test_ensure_property_exists_for_var(monkeypatch):
+    db = _real_db(monkeypatch)
+    monkeypatch.setattr(db, "_find_table_for_var", lambda q, v: "Email")
+    db._ensure_property_exists_for_var("MATCH (e:Email) RETURN e", "e", "ph", "x@y.z")
+    assert db._conn.execute.called
+
+
+def test_find_table_for_var(monkeypatch):
+    db = _real_db(monkeypatch)
+    db._known_tables = {"Email"}
+    out = db._find_table_for_var("MATCH (e:Email) RETURN e", "e")
+    assert out == "Email"
+
+
+def test_import_graph_data(monkeypatch):
+    db = _real_db(monkeypatch)
+    data = {"nodes": [{"labels": ["Email"], "properties": {"hash_sha512": "h1", "value": "a@b.c"}}],
+            "edges": []}
+    db.import_graph_data(data)
+    assert db.execute_query.called
+
+
+def test_execute_transaction(monkeypatch):
+    db = _real_db(monkeypatch)
+    db.execute_transaction([("CREATE (n:Email {v:$v})", {"v": "a@b.c"})])
+    assert db.execute_query.called
+
+
+# ── daemons/isolator (stop ya cubierto arriba) ──────────────────────────────

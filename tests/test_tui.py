@@ -1,10 +1,10 @@
 import pytest
-from amegakurewotan.tui import KarasuTuiApp, GraphTreeWidget, LedgerIntegrityWidget, VaultEditor
+from amegakurewotan.tui import AmegakureWotanTuiApp, GraphTreeWidget, LedgerIntegrityWidget, VaultEditor
 
 @pytest.mark.asyncio
 async def test_tui_layout_and_elements():
     """Verify that the AmegakureWotan TUI initializes correctly with all required tabs and sidebar components."""
-    app = KarasuTuiApp()
+    app = AmegakureWotanTuiApp()
     async with app.run_test() as pilot:
         # Verify app titles
         assert app.title == "AMEWOTANGAKURE OSINT CONTROL PANEL"

@@ -244,7 +244,7 @@ class VaultEditor(Static):
             border_style="green"
         ))
 
-class KarasuTuiApp(App):
+class AmegakureWotanTuiApp(App):
     """The main AmegakureWotan Terminal User Interface App."""
     
     CSS = """
@@ -450,5 +450,5 @@ class KarasuTuiApp(App):
         tabs.active = "tab-vault" # Focus Vault tab
 
 if __name__ == "__main__":
-    app = KarasuTuiApp()
+    app = AmegakureWotanTuiApp()
     app.run()
