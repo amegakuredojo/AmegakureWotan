@@ -57,3 +57,4 @@ coverage.xml
 
 # Environment Secrets
 .env
+test_output.log
