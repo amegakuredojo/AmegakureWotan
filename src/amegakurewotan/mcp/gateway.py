@@ -254,6 +254,11 @@ class ConsolidatedGateway:
         # recon L3 — adapters honestos sobre motores externos (WOTAN-F4).
         self.register("recon.greynoise", ACTION_PASSIVE, self._h_recon_greynoise)
         self.register("recon.theharvester", ACTION_PASSIVE, self._h_recon_theharvester)
+        self.register("recon.shodan", ACTION_PASSIVE, self._h_recon_shodan)
+        self.register("recon.censys", ACTION_PASSIVE, self._h_recon_censys)
+        self.register("recon.spiderfoot", ACTION_PASSIVE, self._h_recon_spiderfoot)
+        self.register("recon.bbot", ACTION_PASSIVE, self._h_recon_bbot)
+        self.register("recon.recon_ng", ACTION_PASSIVE, self._h_recon_reconng)
         # graph.* — consulta read-only.
         self.register("graph.query", ACTION_PASSIVE, self._h_graph_query)
         # darkweb.* — HelAgent bajo Tor + HITL.
@@ -299,6 +304,48 @@ class ConsolidatedGateway:
         if not domain:
             return {"status": "error", "reason": "recon.theharvester requiere 'target'/'domain'"}
         return theharvester_run(domain, sources=args.get("sources"), limit=int(args.get("limit", 100)))
+
+    def _h_recon_shodan(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.shodan import shodan_host_info, shodan_search
+        ip = args.get("target") or args.get("ip")
+        query = args.get("query")
+        if ip:
+            return shodan_host_info(ip)
+        if query:
+            return shodan_search(query, limit=int(args.get("limit", 10)))
+        return {"status": "error", "reason": "recon.shodan requiere 'target'/'ip' o 'query'"}
+
+    def _h_recon_censys(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.censys import censys_host_info, censys_search_hosts
+        ip = args.get("target") or args.get("ip")
+        query = args.get("query")
+        if ip:
+            return censys_host_info(ip)
+        if query:
+            return censys_search_hosts(query, limit=int(args.get("limit", 10)))
+        return {"status": "error", "reason": "recon.censys requiere 'target'/'ip' o 'query'"}
+
+    def _h_recon_spiderfoot(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.spiderfoot import spiderfoot_scan
+        target = args.get("target") or args.get("domain")
+        if not target:
+            return {"status": "error", "reason": "recon.spiderfoot requiere 'target'/'domain'"}
+        return spiderfoot_scan(target, modules=args.get("modules", "sfp_dnsresolve,sfp_ssl"))
+
+    def _h_recon_bbot(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.bbot import bbot_scan
+        target = args.get("target") or args.get("domain")
+        if not target:
+            return {"status": "error", "reason": "recon.bbot requiere 'target'/'domain'"}
+        return bbot_scan(target, preset=args.get("preset", "subdomain-enum"))
+
+    def _h_recon_reconng(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        from amegakurewotan.adapters.l3.recon_ng import reconng_run_module
+        target = args.get("target") or args.get("domain")
+        module = args.get("module") or "recon/domains-hosts/hackertarget"
+        if not target:
+            return {"status": "error", "reason": "recon.recon_ng requiere 'target'/'domain'"}
+        return reconng_run_module(module, target)
 
     def _h_graph_query(self, args: Dict[str, Any]) -> Dict[str, Any]:
         from amegakurewotan.graph.export import export_to_json

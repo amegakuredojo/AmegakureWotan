@@ -1,0 +1,13 @@
+roe_id: wotan-g-genevachat
+operator: lugh
+created_at: 2026-08-10T00:00:00Z
+authorized_targets:
+  - genevachat.com
+  - com.genevachat.staging
+allowed_actions: [passive]
+allows_darkweb: false
+pii_policy: minimize
+scope: >
+  OSINT pasivo sobre la infraestructura pública del APK com.genevachat.staging.
+  Fuentes: Google Play public metadata, SearXNG, DNS/WHOIS, TLS certs, GreyNoise.
+  NO incluye acceso activo a servicios, exploits, ni análisis binario del APK.
