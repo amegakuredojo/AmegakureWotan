@@ -1,4 +1,4 @@
-# 🦅 AmegakureWotan (烏隠れ) — Advanced OSINT Forensic Graph Harness
+# 🦅 AmegakureWotan — Advanced OSINT Forensic Graph Harness
 
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)
