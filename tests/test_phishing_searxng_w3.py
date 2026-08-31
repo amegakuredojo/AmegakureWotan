@@ -72,8 +72,11 @@ def test_searxng_retry_failure(monkeypatch):
         mock_client.return_value.__enter__.return_value.get.side_effect = httpx.HTTPError(
             "conn refused"
         )
-        with pytest.raises(RuntimeError, match="SearXNG query falló"):
-            query_searxng("test")
+        # En la arquitectura nativa sin Docker, el fallo de SearXNG activa el motor nativo
+        # y nunca lanza RuntimeError fatal.
+        results = query_searxng("test")
+        assert isinstance(results, list)
+
 
 
 def test_searxng_with_engines(monkeypatch):

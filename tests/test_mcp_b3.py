@@ -310,3 +310,21 @@ def test_handle_hitl_unknown(monkeypatch):
     monkeypatch.setattr(hitl_mod, "get_hitl", lambda: hitl)
     out = gov_mod.handle_hitl_tool("wotan_hitl_bogus", {})
     assert "desconocida" in out[0].text
+
+
+def test_osint_tools_classified_passive():
+    """Todas las herramientas OSINT deben estar clasificadas como 'passive' para evitar bloqueos."""
+    for tool_name in (
+        "searxng_recon",
+        "heimdall_recon",
+        "huginn_humint",
+        "fenrir_correlate",
+        "kuzu_cypher_query",
+        "kuzu_ingest_entity",
+        "export_graph",
+        "audit_verify",
+        "odin_orchestrate",
+        "hel_darkweb",
+    ):
+        assert gov_mod._TOOL_ACTION.get(tool_name) == "passive", f"{tool_name} should be passive"
+

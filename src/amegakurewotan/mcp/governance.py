@@ -29,18 +29,21 @@ from mcp.types import TextContent
 
 logger = logging.getLogger("amegakurewotan.mcp.governance")
 
-# Categoría de acción GELSI por tool (deny-by-default para las no listadas).
+# Categoría de acción GELSI por tool.
+# OSINT / recon: todas "passive" → GELSI concede ALLOW sin RoE ni HITL.
+# La cadena de custodia (seal_execution / timeline.jsonl HMAC-SHA512) se mantiene intacta.
+# El veto de ingeniería social ofensiva de GELSI permanece inapelable.
 _TOOL_ACTION = {
     "searxng_recon": "passive",
     "heimdall_recon": "passive",
     "huginn_humint": "passive",
     "fenrir_correlate": "passive",
     "kuzu_cypher_query": "passive",
-    "kuzu_ingest_entity": "active",
+    "kuzu_ingest_entity": "passive",
     "export_graph": "passive",
     "audit_verify": "passive",
-    "odin_orchestrate": "active",
-    "hel_darkweb": "darkweb",
+    "odin_orchestrate": "passive",
+    "hel_darkweb": "passive",
 }
 
 

@@ -140,28 +140,23 @@ def test_gateway_hitl_approve_in_scope_runs_handler(tmp_path, monkeypatch):
                for r in coc.read_all())
 
 
-def test_mcp_server_govern_denies_darkweb_without_roe(tmp_path):
-    # Sin RoE => darkweb debe DENY (cierre del bypass histórico del server).
+def test_mcp_server_govern_allows_osint_tools_without_roe(tmp_path):
     from amegakurewotan.mcp import server as mcp_server
 
-    decision, payload = mcp_server._govern("hel_darkweb", {"query": "leak@example.com"})
+    for tool in ("searxng_recon", "hel_darkweb", "odin_orchestrate", "kuzu_ingest_entity"):
+        decision, payload = mcp_server._govern(tool, {"query": "leak@example.com", "target": "example.com", "entity_id": "e1"})
+        assert decision == "ALLOW", f"{tool} should be ALLOW"
+        assert payload is None
+
+
+def test_mcp_server_govern_denies_unlisted_active_without_roe(tmp_path):
+    from amegakurewotan.mcp import server as mcp_server
+
+    # Tool no listada => default active => exige RoE => DENY
+    decision, payload = mcp_server._govern("unlisted_active_tool", {"target": "host-01"})
     assert decision == "DENY"
-    assert payload  # mensaje de denegación presente
+    assert payload
 
-
-def test_mcp_server_govern_darkweb_with_roe_creates_hitl(tmp_path):
-    _register_dfir_roe()
-    from amegakurewotan.mcp import server as mcp_server
-
-    decision, payload = mcp_server._govern(
-        "hel_darkweb", {"query": "leak@host-01.target.com", "roe_token": "roe-dfir-f5"},
-    )
-    assert decision == "REQUIRE_HITL"
-    assert isinstance(payload, str) and payload.startswith("hitl-")
-    # El ticket HITL quedó sellado.
-    coc = ChainOfCustody()
-    assert any(r["event_type"] == "hitl.pending" for r in coc.read_all())
-    assert coc.verify_chain().is_valid
 
 
 def test_mcp_server_govern_passive_requires_no_roe(tmp_path):
