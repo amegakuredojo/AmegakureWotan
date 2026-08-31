@@ -36,7 +36,7 @@ from typing import Any, Dict, List, Optional
 import kuzu
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, ListToolsResult, CallToolResult, CallToolRequestParams, PaginatedRequestParams
 
 from amegakurewotan.tools.searxng import query_searxng
 
@@ -154,6 +154,42 @@ def get_kuzu_connection() -> kuzu.Connection:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 app = Server(SERVER_NAME)
 
+# Definir handlers y registrar después de que app exista (late-binding).
+async def _list_tools(
+    _ctx: Any,
+    _params: Optional[PaginatedRequestParams] = None,
+) -> ListToolsResult:
+    """Handler MCP 2.x para tools/list — firma (ctx, params) obligatoria."""
+    tools = await list_tools()
+    return ListToolsResult(tools=tools)
+
+
+async def _call_tool(
+    _ctx: Any,
+    params: CallToolRequestParams,
+) -> CallToolResult:
+    """Handler MCP 2.x para tools/call — firma (ctx, params) obligatoria."""
+    result = await call_tool(params.name, params.arguments or {})
+    return CallToolResult(content=result)
+
+
+def _register_mcp_tools(server_app: Server) -> Server:
+    """Registrar handlers tools/list y tools/call en MCP SDK 2.x.
+
+    MCP 2.x requiere add_request_handler(method, params_type, handler).
+    params_type para tools/list = PaginatedRequestParams (no ListToolsRequest).
+    Handler firma: (ctx: ServerRequestContext, params: ParamsType) -> Awaitable[Result].
+    """
+    if not hasattr(server_app, "add_request_handler"):
+        return server_app
+
+    server_app.add_request_handler("tools/list", PaginatedRequestParams, _list_tools)
+    server_app.add_request_handler("tools/call", CallToolRequestParams, _call_tool)
+
+    return server_app
+
+
+_register_mcp_tools(app)
 
 def _forensic_hash(payload_str: str) -> str:
     """
@@ -185,39 +221,6 @@ def _validate_cypher_allowlist(query: str) -> bool:
     return first_word in _CYPHER_ALLOWLIST
 
 
-# Registro de tools en el servidor MCP de bajo nivel. El SDK mcp >=2.0 renombró
-# la API de alto nivel (list_tools/call_tool); en esa versión el registro es un
-# no-op pero el módulo debe importar sin fallar. La gobernanza Wotan (F5) viaja
-# por mcp.governance y el gateway, no por este decorador.
-def _register_mcp_tools(app):
-    if hasattr(app, "list_tools") and hasattr(app, "call_tool"):
-
-        @app.list_tools()
-        async def _list_tools():
-            return [
-                Tool(name="searxng_recon", description="(registrada vía gateway Wotan gobernado)",
-                     inputSchema={"type": "object", "properties": {}, "required": []}),
-            ]
-
-        @app.call_tool()
-        async def _call_tool(name, arguments):  # pragma: no cover - path only on old SDK
-            from amegakurewotan.mcp.governance import govern, handle_hitl_tool
-
-            decision, payload = govern(name, arguments)
-            if decision == "ALLOW":
-                return handle_hitl_tool(name, arguments) if name.startswith("wotan_hitl") else [
-                    TextContent(type="text", text="[WOTAN] ejecución vía gateway requerida")]
-            if decision == "REQUIRE_HITL":
-                return [TextContent(type="text", text=f"[GELSI: REQUIRE_HITL] ticket {payload}")]
-            return [TextContent(type="text", text=f"[GELSI: DENY] {payload}")]
-
-    return app
-
-
-# Nota: el registro de alto nivel (@app.list_tools/@app.call_tool) requiere el SDK
-# mcp <2.0. Bajo mcp 2.0.0 el server de bajo nivel no expone esos decoradores;
-# la gobernanza Wotan (F5) se sirve vía mcp.governance + gateway. No se invoca
-# _register_mcp_tools(app) aquí para garantizar import limpio en mcp 2.0.0.
 async def list_tools() -> List[Tool]:
     """Lista el arsenal completo de tools OSINT expuestas al LLM cliente."""
     return [
@@ -751,13 +754,9 @@ async def call_tool(name: str, arguments: dict) -> List[TextContent]:
         raise ValueError(f"[AMEWOTAN-MCP] Tool desconocida: '{name}'")
 
 
-# Registro condicional en el servidor MCP de bajo nivel (solo SDK mcp <2.0).
-# En mcp 2.0.0 no existe la API de alto nivel; el módulo importa y la gobernanza
-# Wotan (F5) se sirve vía mcp.governance + gateway.
-if hasattr(app, "call_tool"):
-    call_tool = app.call_tool()(call_tool)  # type: ignore[assignment]
-if hasattr(app, "list_tools"):
-    list_tools = app.list_tools()(list_tools)  # type: ignore[assignment]
+# Registro condicional en el servidor MCP (solo SDK mcp <2.0).
+# En mcp 2.0.0 no existen los decoradores; la gobernanza
+# Wotan (F5) se sirve vía add_request_handler() + mcp.governance + gateway.
 
 
 async def main() -> None:
