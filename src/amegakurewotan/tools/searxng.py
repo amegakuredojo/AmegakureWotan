@@ -12,21 +12,22 @@ import json
 import sys
 import time
 import os
-from typing import Any, Optional
-
+import logging
 import httpx
+
+logger = logging.getLogger("amegakurewotan.tools.searxng")
 
 # Usa la URL interna de la red de Docker (SEARXNG_URL por variable de entorno)
 SEARXNG_URL = os.getenv("SEARXNG_URL", "http://127.0.0.1:8080/search")
-MAX_RETRIES = 3
-BACKOFF_BASE = 1.5
+MAX_RETRIES = 2
+BACKOFF_BASE = 0.5
 
 def query_searxng(
     q: str,
     engines: Optional[str] = None,
     categories: Optional[str] = None,
     max_results: int = 10,
-    timeout: float = 10.0,
+    timeout: float = 5.0,
 ) -> list[dict[str, Any]]:
     params: dict[str, Any] = {"q": q, "format": "json"}
     if engines:
@@ -42,10 +43,14 @@ def query_searxng(
                 r.raise_for_status()
                 data = r.json()
                 return data.get("results", [])[:max_results]
-        except (httpx.HTTPError, json.JSONDecodeError) as exc:
+        except Exception as exc:
             last_exc = exc
-            time.sleep(BACKOFF_BASE**attempt)
+            if attempt < MAX_RETRIES:
+                time.sleep(BACKOFF_BASE * attempt)
+    
     raise RuntimeError(f"SearXNG query falló tras {MAX_RETRIES} reintentos: {last_exc}")
+
+
 
 try:
     from langchain_core.tools import BaseTool

@@ -2,26 +2,15 @@
   "mcpServers": {
     "amegakurewotan-sandbox": {
       "type": "stdio",
-      "command": "docker",
+      "command": "python",
       "args": [
-        "compose",
-        "-f",
-        "/home/lugh/AmegakureDojo/AmegakureWotan/docker-compose.yml",
-        "-f",
-        "/home/lugh/AmegakureDojo/AmegakureWotan/docker-compose.sandbox.yml",
-        "--profile", "sandbox-mcp",
-        "run",
-        "--rm",
-        "-i",
-        "--no-TTY",
-        "--no-deps",
-        "-e", "KARASU_SILENT_BOOTSTRAP=true",
-        "-e", "AMEWOTAN_OPSEC_BYPASS_TOR=true",
-        "-e", "KARASU_MCP_TOR_TIMEOUT=3",
-        "-e", "SANDBOX_DATA_PATH=/tmp/amewotan_sandbox",
-        "amewotan-mcp",
-        "run"
-      ]
+        "-m",
+        "amegakurewotan.mcp.server"
+      ],
+      "env": {
+        "AMEWOTAN_DATA_DIR": "/tmp/amewotan_sandbox"
+      }
     }
   }
 }
+

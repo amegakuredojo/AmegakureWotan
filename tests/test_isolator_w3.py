@@ -56,6 +56,7 @@ def test_start_stop():
 
 def test_trigger_kill_switch():
     daemon = TorIsolatorDaemon()
-    with patch("os._exit") as mock_exit:
-        daemon._trigger_kill_switch("test kill")
-        mock_exit.assert_called_once_with(1)
+    daemon.is_running = True
+    daemon._trigger_kill_switch("test kill")
+    assert daemon.is_running is False
+

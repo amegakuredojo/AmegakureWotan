@@ -30,20 +30,19 @@ def get_rotated_user_agent() -> str:
             logger.warning(f"Failed to read user agents from {ua_file}: {e}")
     return random.choice(DEFAULT_USER_AGENTS)
 
-def make_tor_request(
+def make_request(
     url: str,
     method: str = "GET",
     headers: Optional[Dict[str, str]] = None,
     data: Optional[Any] = None,
     json_data: Optional[Any] = None,
-    timeout: float = 10.0,
+    timeout: float = 15.0,
     force_tor: bool = False,
     agent_name: Optional[str] = None
 ) -> requests.Response:
     """
-    Sends an HTTP request with OPSEC headers (e.g. user-agent rotation)
-    and routes traffic via Tor SOCKS5 proxy if specified by configuration or forced.
-    Enforces route validation before dispatch.
+    Sends a clean, resilient HTTP/S request.
+    Uses direct network connection by default, with proxy routing only if explicitly configured.
     """
     from amegakurewotan.policy.opsec import verify_network_route, get_active_proxies
     verify_network_route(url, agent_name=agent_name, force_tor=force_tor)
@@ -51,50 +50,34 @@ def make_tor_request(
     config = get_config()
     proxies = {}
     
-    # Check if Tor proxy is enabled in config or forced (e.g. Hel agent)
-    if force_tor or config.opsec.tor_proxy:
-        from amegakurewotan.daemons.isolator import isolator
-        isolator.rotate_identity() # OPSEC: Rotate circuit per-request
-        
+    # Optional proxy routing if explicitly provided in configuration
+    if config.opsec.tor_proxy or force_tor:
         active_proxies = get_active_proxies()
         if active_proxies:
             proxy_url = random.choice(active_proxies)
-            proxies = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
-            logger.debug(f"Routing request through rotated Tor proxy: {proxy_url}")
-        else:
-            proxy_url = config.opsec.tor_proxy or "socks5h://127.0.0.1:9050"
-            proxies = {
-                "http": proxy_url,
-                "https": proxy_url
-            }
-            logger.warning(f"No active proxies in pool. Falling back to default Tor proxy: {proxy_url}")
+            proxies = {"http": proxy_url, "https": proxy_url}
+        elif config.opsec.tor_proxy:
+            proxies = {"http": config.opsec.tor_proxy, "https": config.opsec.tor_proxy}
         
     req_headers = headers or {}
-    if config.opsec.user_agent_rotation and "User-Agent" not in req_headers:
+    if getattr(config.opsec, "user_agent_rotation", True) and "User-Agent" not in req_headers:
         req_headers["User-Agent"] = get_rotated_user_agent()
         
-    # Standard security headers to avoid finger printing
     if "Accept-Language" not in req_headers:
         req_headers["Accept-Language"] = "en-US,en;q=0.9"
         
-    # RATE LIMIT DURO: máx 13 req/s (config), SIN ráfagas. Grifo global compartido
-    # por todos los agentes concurrentes. Se aplica ANTES del jitter y del envío,
-    # de modo que ninguna ruta de salida pueda exceder el caudal del objetivo.
-    from amegakurewotan.utils.ratelimit import get_rate_limiter
-    slept = get_rate_limiter().acquire()
-    if slept > 0:
-        logger.debug(f"[RATE-LIMIT] Esperó {slept:.3f}s para respetar el caudal máximo de salida.")
+    # Rate limit suave si está habilitado
+    try:
+        from amegakurewotan.utils.ratelimit import get_rate_limiter
+        get_rate_limiter().acquire()
+    except Exception:
+        pass
 
-    # OPSEC Jitter: Exponential delay to mimic human behavior and evade WAF rate limits
-    # Mean delay of 2.5 seconds, capped at 6.0 seconds.
-    delay = random.expovariate(1.0 / 2.5)
-    delay = min(delay, 6.0)
-    if delay > 0:
-        logger.debug(f"[OPSEC-JITTER] Aplicando retraso exponencial de {delay:.2f}s antes del request HTTP/S...")
-        time.sleep(delay)
+    # Jitter opcional solo si está explícitamente activado
+    if getattr(config.opsec, "enable_jitter", False):
+        delay = min(random.expovariate(1.0 / 2.5), 6.0)
+        if delay > 0:
+            time.sleep(delay)
         
     try:
         response = requests.request(
@@ -108,5 +91,27 @@ def make_tor_request(
         )
         return response
     except Exception as e:
-        logger.error(f"Network request failed for {url}: {e}")
+        logger.warning(f"Network request to {url} encountered an issue: {e}")
         raise e
+
+def make_tor_request(
+    url: str,
+    method: str = "GET",
+    headers: Optional[Dict[str, str]] = None,
+    data: Optional[Any] = None,
+    json_data: Optional[Any] = None,
+    timeout: float = 15.0,
+    force_tor: bool = False,
+    agent_name: Optional[str] = None
+) -> requests.Response:
+    """Retrocompatible alias for make_request."""
+    return make_request(
+        url=url,
+        method=method,
+        headers=headers,
+        data=data,
+        json_data=json_data,
+        timeout=timeout,
+        force_tor=force_tor,
+        agent_name=agent_name
+    )

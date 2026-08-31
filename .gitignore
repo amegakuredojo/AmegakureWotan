@@ -52,6 +52,13 @@ coverage.xml
 # Hermes plans (local planning, no forma parte del artefacto)
 .hermes/
 
-# Environment Secrets
+# Environment Secrets & Keys
 .env
+*.pem
+*.key
+*.sig
+opsec/keys/
+*.kuzu
+*.kuzu_wal
 test_output.log
+

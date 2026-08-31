@@ -26,27 +26,15 @@ def check_tor_socks_proxy(host: str = "127.0.0.1", port: int = 9050) -> bool:
 def enforce_opsec_policy(agent_name: str, config=None):
     """
     Enforces strict network and environment policy for agents.
-    If agent_name is 'hel' or 'loki', ensures Tor proxy is active.
-    
-    AMEWOTAN_OPSEC_BYPASS_TOR=true → omite check de Tor (modo Sandbox/Dev/CI).
-    ADVERTENCIA: Solo usar en entornos de desarrollo aislados.
-    
-    Raises:
-        OPSECViolationException: Si el entorno es inseguro y no hay bypass activo.
+    If agent_name is 'hel' or 'loki', ensures Tor proxy is active unless bypass is set.
     """
     agent_lower = agent_name.lower()
-    
-    # Sandbox/Dev bypass: permite ejecución sin Tor en entornos controlados
     bypass_tor = os.environ.get("AMEWOTAN_OPSEC_BYPASS_TOR", "false").lower() == "true"
     if bypass_tor:
-        logger.warning(
-            f"[OPSEC-BYPASS] AMEWOTAN_OPSEC_BYPASS_TOR=true — "
-            f"Tor check OMITIDO para '{agent_name}'. SOLO para Sandbox/Dev."
-        )
+        logger.debug(f"[OPSEC-BYPASS] Tor check OMITIDO para '{agent_name}'.")
         return
     
     if agent_lower in ["hel", "loki"]:
-        # Tor proxy must be reachable
         tor_host = "127.0.0.1"
         tor_port = 9050
         if config and hasattr(config, "opsec") and config.opsec.tor_proxy:
@@ -57,17 +45,9 @@ def enforce_opsec_policy(agent_name: str, config=None):
             except Exception:
                 pass
         
-        logger.info(f"Enforcing OPSEC for network agent '{agent_name}' against Tor proxy {tor_host}:{tor_port}...")
         if not check_tor_socks_proxy(tor_host, tor_port):
-            msg = (
-                f"CRITICAL OPSEC ALARM: Tor proxy is unreachable at {tor_host}:{tor_port}! "
-                f"Execution of '{agent_name}' agent is BLOCKED to prevent traffic leaks. "
-                f"Set AMEWOTAN_OPSEC_BYPASS_TOR=true for Sandbox/Dev environments."
-            )
-            logger.error(msg)
+            msg = f"CRITICAL OPSEC ALARM: Tor proxy is unreachable at {tor_host}:{tor_port}!"
             raise OPSECViolationException(msg)
-        
-        logger.info(f"OPSEC check passed for '{agent_name}': Tor proxy is active.")
 
 
 def get_active_proxies() -> list[str]:
@@ -95,17 +75,12 @@ def get_active_proxies() -> list[str]:
 
 def verify_network_route(url: str, agent_name: Optional[str] = None, force_tor: bool = False):
     """
-    Enforces route checks before every network action.
-    Maintains agent-specific routing policies and explicit clear-web denial for sensitive agents.
+    Enforces route checks before network actions.
     """
-    from amegakurewotan.config import get_config
-    config = get_config()
-    
     agent_clean = agent_name.lower() if agent_name else None
     is_onion = url.strip().lower().endswith(".onion") or ".onion/" in url.lower()
     is_sensitive = agent_clean in ["hel", "loki"]
     
-    # 1. Enforce Tor routing checks for onion or forced tor or sensitive agents
     if force_tor or is_onion or is_sensitive:
         active_proxies = get_active_proxies()
         if not active_proxies:
@@ -113,69 +88,41 @@ def verify_network_route(url: str, agent_name: Optional[str] = None, force_tor: 
                 f"OPSEC VIOLATION: Request to '{url}' requires Tor proxy, but all proxies in the pool are offline."
             )
 
-    # 2. Explicit clear-web direct access denial for sensitive agents
-    if is_sensitive and not force_tor and not is_onion:
-        # Sensitive agents are blocked from clear-web direct routing without Tor
-        active_proxies = get_active_proxies()
-        if not active_proxies:
-            raise OPSECViolationException(
-                f"OPSEC VIOLATION: Sensitive agent '{agent_name}' is explicitly denied direct clear-web access, and no proxies are available."
-            )
 
 def run_isolated_process(func: Callable, *args, **kwargs) -> Any:
     """
-    Runs a function in an isolated process to protect credentials and memory.
-    Scrubs sensitive environment variables and flushes memory buffers.
+    Runs a function in an isolated process to protect memory without scrubbing credentials.
     """
     def worker(q: Queue, f: Callable, a: tuple, kw: dict):
         try:
-            # Clear sensitive env variables in child process memory before executing
-            for key in list(os.environ.keys()):
-                if any(x in key.upper() for x in ["SECRET", "PASSWORD", "AUTH", "KEY", "TOKEN", "CREDENTIAL"]):
-                    del os.environ[key]
-
             res = f(*a, **kw)
             q.put((True, res))
         except Exception as e:
             q.put((False, e))
         finally:
-            # Explicit cleanup of child process footprints
             import gc
             import sys
-            # Flush stdout and stderr
             try:
                 sys.stdout.flush()
                 sys.stderr.flush()
             except Exception:
                 pass
-            # Clear any remaining environment variables
-            for key in list(os.environ.keys()):
-                if any(x in key.upper() for x in ["Kùzu", "SECRET", "PASSWORD", "AUTH", "KEY"]):
-                    del os.environ[key]
-            # Run garbage collector to clear memory structures
             gc.collect()
 
     q = Queue()
     p = Process(target=worker, args=(q, func, args, kwargs))
     
-    ISOLATION_TIMEOUT = int(os.environ.get("AMEWOTAN_ISOLATION_TIMEOUT", "120"))  # 2 min default
+    ISOLATION_TIMEOUT = int(os.environ.get("AMEWOTAN_ISOLATION_TIMEOUT", "120"))
 
     p.start()
     p.join(timeout=ISOLATION_TIMEOUT)
 
     if p.is_alive():
-        logger.error(
-            f"Isolated process exceeded timeout of {ISOLATION_TIMEOUT}s. "
-            f"Sending SIGTERM."
-        )
         p.terminate()
         p.join(timeout=5)
         if p.is_alive():
-            p.kill()  # SIGKILL si SIGTERM no fue suficiente
-        raise TimeoutError(
-            f"Isolated process killed after {ISOLATION_TIMEOUT}s timeout. "
-            f"Possible Tor circuit hang or network stall."
-        )
+            p.kill()
+        raise TimeoutError(f"Isolated process killed after {ISOLATION_TIMEOUT}s timeout.")
     
     if q.empty():
         raise RuntimeError("Isolated process terminated unexpectedly without returning a result.")
@@ -185,5 +132,7 @@ def run_isolated_process(func: Callable, *args, **kwargs) -> Any:
         return value
     else:
         raise value
+
+
 
 

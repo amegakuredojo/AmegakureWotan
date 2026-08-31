@@ -128,7 +128,9 @@ def get_kuzu_connection() -> kuzu.Connection:
     global _db, _conn
     if _conn is None:
         try:
-            db_path = os.environ.get("KUZU_DATABASE_PATH", "/data/amegakurewotan_vault.kuzu")
+            from amegakurewotan.config import get_config
+            cfg = get_config()
+            db_path = os.environ.get("KUZU_DATABASE_PATH") or getattr(cfg.kuzu, "database_path", None) or str(cfg.base_dir / "vault.kuzu")
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
             _db = kuzu.Database(db_path)
             _conn = kuzu.Connection(_db)

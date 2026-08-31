@@ -2,21 +2,12 @@
   "mcpServers": {
     "amegakurewotan": {
       "type": "stdio",
-      "command": "docker",
+      "command": "python",
       "args": [
-        "compose",
-        "-f",
-        "/home/lugh/AmegakureDojo/AmegakureWotan/docker-compose.yml",
-        "--profile", "mcp",
-        "run",
-        "--rm",
-        "-i",
-        "--no-TTY",
-        "--no-deps",
-        "-e", "KARASU_SILENT_BOOTSTRAP=true",
-        "amewotan-mcp",
-        "run"
+        "-m",
+        "amegakurewotan.mcp.server"
       ]
     }
   }
 }
+

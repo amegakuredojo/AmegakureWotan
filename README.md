@@ -2,49 +2,52 @@
 
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-green.svg)
-![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![MCP](https://img.shields.io/badge/MCP-Native%20Stdio-green.svg)
 ![Database](https://img.shields.io/badge/GraphDB-K%C3%B9zu-yellow.svg)
 
-AmegakureWotan is a highly-secure, modular, and containerized **Open Source Intelligence (OSINT)** framework built for the shadows of the Amegakure Dojo. It executes stealthy automated intelligence gathering, correlates complex cyber-entities using an embedded **Kùzu Graph Database**, and maintains absolute cryptographic integrity of all findings through its **Forensic Audit Ledger**.
+AmegakureWotan is a high-precision, military forensic **Open Source Intelligence (OSINT)** framework and **Model Context Protocol (MCP) Server**. It executes automated intelligence gathering, correlates complex cyber-entities using an embedded **Kùzu Graph Database**, and maintains absolute cryptographic integrity of all findings through its **Forensic Audit Ledger** (HMAC-SHA512).
 
-Designed with paramount **OPSEC** in mind, it routes all external reconnaissance through a self-healing **Tor SOCKS5 Proxy Network**, ensuring operator anonymity while investigating hostile targets, dark web assets, and corporate infrastructure.
+Designed with flexibility and developer ergonomics in mind, it operates **100% Zero-Config natively out-of-the-box on any host** (Kali, Parrot, Ubuntu, Debian, openSUSE, Arch, WSL2, macOS) over stdio JSON-RPC without requiring Docker or complex network setups.
 
 ---
 
-## 🕷️ Architecture & OPSEC
+## 🕷️ Architecture & Core Components
 
-- **Isolated Docker Runtime:** The entire pipeline executes inside a locked-down, network-restricted `docker-compose` topology.
-- **Strict OPSEC Networking:** The reconnaissance container is disconnected from the clearnet. It bridges EXCLUSIVELY to a Tor proxy sidecar container. A "Kill Switch" guarantees no traffic escapes unanonymized.
-- **Embedded Graph DB (Kùzu):** Intelligence nodes (Domains, IPs, Emails, Personas) are structured locally using Kùzu, allowing lightning-fast relational queries entirely offline.
-- **Forensic Audit Ledger:** Every agent action and DB mutation is cryptographically hashed (HMAC-SHA512) into a tamper-proof audit trail for legally verifiable chain-of-custody reporting.
+- **Zero-Config Native Runtime:** Runs natively on the host or inside any container/environment via standard Python.
+- **Embedded Graph DB (Kùzu):** Intelligence nodes (Domains, IPs, Emails, Personas) are structured locally using Kùzu in user-space (`~/.amegakurewotan/vault.kuzu`), allowing lightning-fast relational queries entirely offline without daemon processes.
+- **Forensic Audit Ledger:** Every agent action and DB mutation is cryptographically hashed (HMAC-SHA512) into a tamper-proof audit trail (`timeline.jsonl`) for legally verifiable chain-of-custody reporting.
+- **MCP Server Stdio:** Full Model Context Protocol server exposing 10 high-precision OSINT tools directly to LLMs (Antigravity, Claude Desktop, OpenCode, VS Code).
 - **Agent Mesh Topology:**
-  - `Heimdall`: Digital Reconnaissance & Perimeter Mapping.
-  - `Huginn`: Corporate Entity & HUMINT mapping.
-  - `Tyr`: Information verification & NATO intelligence scoring.
-  - `Hel`: Dark Web / Deep Web intel indexing.
+  - `Heimdall`: Digital Reconnaissance & Perimeter Mapping (DNS, WHOIS, SSL/TLS history, ASN).
+  - `Huginn`: Corporate Entity & HUMINT mapping (HES exposure scoring).
+  - `Tyr`: Information verification & NATO Admiralty intelligence scoring (Reliability/Credibility).
+  - `Hel`: Leak detection & Dark Web indexing.
+  - `Fenrir`: Graph correlation & relationship pivoting.
   - `Odin`: Workflow orchestrator and central brain.
-  - `Mimir`: Memory retrieval and contextual search.
+  - `Mimir`: Contextual retrieval & historical OSINT memory.
 
 ---
 
-## ⚡ Installation (Zero to OSINT in 60s)
+## ⚡ Quick Start — MCP Server (Zero-Config)
 
-AmegakureWotan includes a seamless bootstrap installer that builds the secure Docker architecture and injects a global command wrapper into your system.
+Add to your MCP client config (e.g. `~/.gemini/antigravity-cli/config.json` or Claude Desktop):
 
-### Prerequisites:
-- `git`
-- `docker`
-- `docker compose`
-
-### Setup:
-```bash
-git clone https://github.com/amegakuredojo/AmegakureWotan.git
-cd AmegakureWotan
-./install.sh
+```json
+{
+  "mcpServers": {
+    "amegakurewotan": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "amegakurewotan.mcp.server"
+      ]
+    }
+  }
+}
 ```
 
-> **Note:** The `install.sh` script will build the hardened containers and create a global wrapper at `~/.local/bin/amewotan`. Ensure `~/.local/bin` is in your `$PATH`.
 
 ---
 

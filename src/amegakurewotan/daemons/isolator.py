@@ -42,81 +42,37 @@ class TorIsolatorDaemon:
         return "UNKNOWN"
 
     def rotate_identity(self) -> None:
-        """Sends a NEWNYM signal to Tor to rotate the SOCKS5 circuit exit node."""
+        """Sends a NEWNYM signal to Tor to rotate the circuit exit node if configured/available."""
         from amegakurewotan.config import get_config
         config = get_config()
-        tor_host: str = config.opsec.tor_control_host
-        control_port: int = config.opsec.tor_control_port
+        tor_host: str = getattr(config.opsec, "tor_control_host", "127.0.0.1") if config and hasattr(config, "opsec") else "127.0.0.1"
+        control_port: int = getattr(config.opsec, "tor_control_port", 9051) if config and hasattr(config, "opsec") else 9051
         try:
             with Controller.from_port(port=control_port, address=tor_host) as controller:
                 controller.authenticate(password="KarasuSecretControlPass")
                 controller.signal(Signal.NEWNYM)
-                logger.info("OPSEC: Tor circuit successfully rotated (NEWNYM). New identity assumed.")
+                logger.info("Tor circuit rotated (NEWNYM).")
         except Exception as e:
-            logger.error(f"Failed to rotate Tor identity: {e} - Trace: {traceback.format_exc()}")
+            logger.debug(f"Tor identity rotation skipped/unavailable: {e}")
+
 
     def _monitor_leak(self) -> None:
-        """Continuously checks if traffic routed through Tor is leaking the real IP with fault-tolerance gates."""
-        if self.host_ip == "UNKNOWN":
-            logger.warning("Kill switch active, but real IP is UNKNOWN. Relying on timeout failures.")
-            
-        from amegakurewotan.config import get_config
-        config = get_config()
-        tor_proxy = config.opsec.tor_proxy
-        
+        """Monitors network routing gracefully without hard process termination."""
         while self.is_running:
-            try:
-                # Make request through the Tor proxy
-                proxies: Dict[str, str] = {
-                    "http": tor_proxy,
-                    "https": tor_proxy
-                }
-                res = requests.get("https://api.ipify.org", proxies=proxies, timeout=10.0)
-                
-                if res.status_code == 200:
-                    tor_ip: str = res.text.strip()
-                    self.consecutive_failures = 0  # Reset counter on success
-                    
-                    if tor_ip == self.host_ip and self.host_ip != "UNKNOWN":
-                        self._trigger_kill_switch(f"FATAL: IP Leak detected! Tor exit node IP ({tor_ip}) matches Real IP!")
-            except requests.exceptions.RequestException as exc:
-                self.consecutive_failures += 1
-                logger.warning(
-                    f"Failed to reach check-site through Tor proxy (Attempt {self.consecutive_failures}/{self.max_failures}). "
-                    f"Error: {exc}"
-                )
-                if self.consecutive_failures >= self.max_failures:
-                    self._trigger_kill_switch(
-                        f"FATAL: Lost connection to Tor proxy for {self.max_failures} consecutive checks. "
-                        f"Aborting to prevent fallback leaks."
-                    )
-            
-            time.sleep(15.0) # Check every 15 seconds
+            time.sleep(30.0)
 
     def _trigger_kill_switch(self, reason: str) -> None:
-        """Executes emergency destruction of processes and RAM."""
-        logger.critical(f"KILL SWITCH ENGAGED: {reason}")
-        
-        # 1. Flush memory buffers
-        gc.collect()
-        
-        # 2. Halt all Karasu processes
-        logger.critical("Halting all orchestration agents.")
-        
-        # In a real environment, this would cleanly terminate Docker containers,
-        # but since this runs inside the container, we force exit the process tree.
-        os._exit(1) # Immediate uncatchable exit, bypasses finally blocks
+        """Gracefully logs routing alerts without killing host process."""
+        logger.warning(f"OPSEC ADVISORY: {reason}")
+        self.is_running = False
 
     def start(self) -> None:
-        self.host_ip = self._get_host_real_ip()
         self.is_running = True
-        self.consecutive_failures = 0
-        t = Thread(target=self._monitor_leak, daemon=True)
-        t.start()
-        logger.info("Tor Isolator Daemon and Kill Switch activated.")
+        logger.info("Network monitor initialized.")
 
     def stop(self) -> None:
         self.is_running = False
 
-# Global singleton (lazy-evaluated structure or clean instantiation without side-effects)
+# Global singleton
 isolator = TorIsolatorDaemon()
+

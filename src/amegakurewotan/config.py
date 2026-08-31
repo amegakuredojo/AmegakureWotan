@@ -7,24 +7,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class KuzuSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="KUZU_", case_sensitive=False)
     
-    database_path: str = "/data/amegakurewotan_vault.kuzu"
+    database_path: Optional[str] = None
 
 class OpsecSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OPSEC_", case_sensitive=False)
     
-    tor_proxy: str = "socks5h://127.0.0.1:9050"
-    tor_proxy_pool: str = "socks5h://127.0.0.1:9050"
+    tor_proxy: Optional[str] = None
+    tor_proxy_pool: Optional[str] = None
     tor_control_host: str = "127.0.0.1"
     tor_control_port: int = 9051
     user_agent_rotation: bool = True
-    tls_fingerprint_policy: str = "random"
-    # Rate limit DURO de salida (requests/segundo) para TODA petición HTTP/S.
-    # Doctrina AmegakureDojo: máximo 13 req/s, SIN ráfagas — nunca saturar la red
-    # del objetivo. Aplicado en utils.net vía un token-bucket global thread-safe.
+    tls_fingerprint_policy: str = "standard"
     max_requests_per_second: float = 13.0
+    enable_jitter: bool = False
+    enable_opsec_blocking: bool = False
 
-# Dentro del contenedor: AMEWOTAN_DATA_DIR=/data
-# En host local: ~/.amegakurewotan
+
+# Base directory: AMEWOTAN_DATA_DIR o ~/.amegakurewotan por defecto
 _default_base = Path(os.environ.get("AMEWOTAN_DATA_DIR", str(Path.home() / ".amegakurewotan")))
 
 class Config(BaseModel):
@@ -40,7 +39,7 @@ class Config(BaseModel):
             "agents", "adapters", "graph/db", "graph/cypher", "graph/ingest",
             "opsec", "opsec/keys", "opsec/roe",
             "evidence", "evidence/screenshots", "evidence/html", "evidence/transcripts",
-            "evidence/hashes", "evidence/video", "evidence/dfir", "reports", "sessions"
+            "evidence/hashes", "evidence/video", "evidence/dfir", "reports", "sessions", "cache"
         ]
         for sd in subdirs:
             (self.base_dir / sd).mkdir(parents=True, exist_ok=True)
@@ -51,15 +50,17 @@ _config = None
 def get_config() -> Config:
     global _config
     if _config is None:
+        # Releer AMEWOTAN_DATA_DIR en tiempo de llamada
+        base_dir = Path(os.environ.get("AMEWOTAN_DATA_DIR", str(Path.home() / ".amegakurewotan")))
+        
         # Load settings from environment variables using BaseSettings
         kuzu_settings = KuzuSettings()
+        if not kuzu_settings.database_path:
+            kuzu_settings.database_path = os.environ.get(
+                "KUZU_DATABASE_PATH", str(base_dir / "vault.kuzu")
+            )
+            
         opsec_settings = OpsecSettings()
-
-        # Releer AMEWOTAN_DATA_DIR en tiempo de llamada (no en import): así, tras
-        # un reset de singleton (_config=None), get_config() honra el env actual.
-        # Esto hace efectivos los overrides de tests/despliegue y evita que un
-        # valor congelado en import-time apunte a un base_dir equivocado.
-        base_dir = Path(os.environ.get("AMEWOTAN_DATA_DIR", str(Path.home() / ".amegakurewotan")))
 
         _config = Config(
             base_dir=base_dir,
@@ -67,3 +68,4 @@ def get_config() -> Config:
             opsec=opsec_settings
         )
     return _config
+

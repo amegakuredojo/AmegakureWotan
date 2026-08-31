@@ -1,106 +1,90 @@
-# 🦅 AmegakureWotan — MCP Config Examples
+# 🦅 AmegakureWotan — MCP Server Zero-Config (v3.0.0)
 
-Configuraciones listas para usar en **AGY (Antigravity)**, **OpenCode** y **Docker Sandboxes**.
+Configuraciones listas para usar en **AGY (Antigravity)**, **OpenCode**, **Claude Desktop** y cualquier host (Kali, Parrot, Ubuntu, Debian, openSUSE, Arch, WSL2, macOS).
+
+---
+
+## ⚡ Zero-Config Out-of-the-Box
+
+AmegakureWotan opera de forma **100% agnóstica al sistema operativo y a la red**.
+- **Cero dependencias obligatorias de contenedores Docker**.
+- **Cero configuración requerida de proxies Tor** (la pila de red usa el stack nativo del host).
+- **Grafo Kùzu embebido** automático en `~/.amegakurewotan/vault.kuzu`.
+- **Integridad y cadena de custodia militar forense** con HMAC-SHA512 (`timeline.jsonl`).
 
 ---
 
 ## Modos de Operación
 
-| Modo | Config | Tor | SearXNG | Kùzu | Uso |
-|------|--------|-----|---------|------|-----|
-| **Producción** | `antigravity_config.json` | ✅ Requerido | ✅ Docker | `/data` (volumen) | AGY/OpenCode con stack completo |
-| **Producción** | `opencode_config.json` | ✅ Requerido | ✅ Docker | `/data` (volumen) | Igual que AGY |
-| **Sandbox** | `sandbox_config.json` | ❌ Bypass | 🔧 Configurable | `/tmp/` (efímero) | Sandboxes, CI/CD, dev |
+| Modo | Config | Requisitos de Red | Kùzu DB | Uso Principal |
+|------|--------|-------------------|---------|---------------|
+| **Nativo Zero-Config (Recomendado)** | `antigravity_config.json` | Stack de red del Host | `~/.amegakurewotan/vault.kuzu` | AGY, Claude Desktop, OpenCode, VS Code |
+| **Personalizado / Sandbox** | `sandbox_config.json` | Stack de red del Host | Custom via `AMEWOTAN_DATA_DIR` | CI/CD, Sandboxes, entornos de pruebas |
+| **OPSEC Reforzado (Opcional)** | Personalizado | Proxychains / Host VPN / Tor | `~/.amegakurewotan/vault.kuzu` | Investigaciones con túneles a nivel de OS |
 
 ---
 
-## Prerequisitos (modo producción)
+## Configuración Rápida
 
-El stack de infraestructura debe estar levantado **antes** de que AGY/OpenCode inicialice el MCP:
+### 1. AGY (Antigravity) / VS Code / Claude Desktop
 
-```bash
-cd /home/lugh/AmegakureDojo/AmegakureWotan
-
-# 1. Levantar infraestructura (Tor + SearXNG) en background
-docker compose up -d tor-proxy searxng
-
-# 2. Esperar a que Tor esté listo (~15-30s)
-sleep 20
-
-# 3. Verificar que está activo
-docker compose ps
-
-# 4. Ahora AGY/OpenCode pueden conectar al MCP
-```
-
-> **CRÍTICO:** Sin el paso 1-3, el MCP puede dar timeout en el handshake inicial.
-
----
-
-## Uso — AGY (Antigravity)
-
-Añadir al archivo de configuración MCP de AGY (`~/.gemini/antigravity-cli/config.json` o similar):
+Añade a tu archivo de configuración de servidores MCP:
 
 ```json
-// Contenido de antigravity_config.json
+{
+  "mcpServers": {
+    "amegakurewotan": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "-m",
+        "amegakurewotan.mcp.server"
+      ]
+    }
+  }
+}
 ```
 
----
-
-## Uso — OpenCode
-
-Añadir a la configuración MCP de OpenCode (`.opencode/config.json`):
+O si instalaste el paquete vía `pip` / `pipx`:
 
 ```json
-// Contenido de opencode_config.json
+{
+  "mcpServers": {
+    "amegakurewotan": {
+      "type": "stdio",
+      "command": "amewotan-mcp",
+      "args": [
+        "run"
+      ]
+    }
+  }
+}
 ```
 
 ---
 
-## Uso — Docker Sandbox (sin Tor / sin SearXNG)
+## Variables de Entorno Opcionales (Personalizaciones del Usuario)
 
-Para entornos aislados donde no hay Tor disponible:
-
-```bash
-# Modo sandbox directo:
-docker compose -f docker-compose.yml -f docker-compose.sandbox.yml \
-  --profile sandbox-mcp run --rm -i --no-TTY --no-deps \
-  -e KARASU_SILENT_BOOTSTRAP=true \
-  -e AMEWOTAN_OPSEC_BYPASS_TOR=true \
-  -e SANDBOX_DATA_PATH=/tmp/amewotan_sandbox \
-  amewotan-mcp run
-```
-
-O usar `sandbox_config.json` directamente en tu cliente MCP.
+| Variable | Default | Propósito |
+|----------|---------|-----------|
+| `AMEWOTAN_DATA_DIR` | `~/.amegakurewotan` | Directorio raíz para reportes, evidencias y grafo |
+| `KUZU_DATABASE_PATH` | `~/.amegakurewotan/vault.kuzu` | Ruta personalizada para el grafo Kùzu embebido |
+| `OPSEC_TOR_PROXY` | `None` | *(Opcional)* Proxy SOCKS si se desea enrutar vía Tor local |
+| `SEARXNG_URL` | `http://127.0.0.1:8080/search` | *(Opcional)* Instancia SearXNG local para dorking |
 
 ---
 
-## Variables de Entorno Clave
+## Herramientas MCP Expuestas
 
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `AMEWOTAN_OPSEC_BYPASS_TOR` | `false` | `true` = Sandbox mode, Tor no requerido |
-| `KARASU_SILENT_BOOTSTRAP` | `false` | `true` = Suprime banners (necesario para MCP) |
-| `KARASU_MCP_TOR_TIMEOUT` | `10` | Segundos máx esperando Tor en modo MCP |
-| `SANDBOX_DATA_PATH` | `/tmp/amewotan_sandbox` | Path de datos en modo sandbox |
-| `SANDBOX_SEARXNG_URL` | `http://localhost:8080/search` | URL SearXNG en sandbox |
-| `KUZU_DATABASE_PATH` | `/data/amewotan_vault.kuzu` | Path de base de datos Kùzu |
+| Tool | Dominio | Descripción |
+|------|---------|-------------|
+| `searxng_recon` | Search | Búsqueda OSINT pasiva y dorking |
+| `heimdall_recon` | Surface | Enumeración DNS, WHOIS, ASN, historial SSL/TLS |
+| `odin_orchestrate` | Orchestrator | Pipeline OSINT multi-fuente consolidado |
+| `huginn_humint` | Exposure | Análisis de exposición de identidad y perfiles |
+| `hel_darkweb` | Leaks | Detección de fugas de credenciales y dark web |
+| `fenrir_correlate` | Correlation | Correlación relacional y pivoteo en grafo |
+| `kuzu_cypher_query` | Graph | Consultas Cypher read-only sobre entidades y relaciones |
+| `audit_verify` | Forensics | Verificación criptográfica HMAC-SHA512 de la cadena de custodia |
+| `export_graph` | Graph | Exportación forense de entidades y relaciones en JSON |
 
----
-
-## Tools MCP Disponibles (v2.0.0)
-
-El MCP Server expone **10 tools** sobre el arsenal completo del framework:
-
-| Tool | Descripción | Tor Requerido |
-|------|-------------|---------------|
-| `searxng_recon` | Búsqueda OSINT con dorks vía SearXNG | ❌ |
-| `heimdall_recon` | DNS, WHOIS, cert history, ASN | ❌ |
-| `odin_orchestrate` | Pipeline OSINT completo (todos los agentes) | ⚠️ Para Hel |
-| `huginn_humint` | HUMINT, perfiles sociales, HES score | ❌ |
-| `hel_darkweb` | Búsqueda Dark Web vía Tor | ✅ Requerido |
-| `fenrir_correlate` | Correlación relacional del grafo | ❌ |
-| `kuzu_ingest_entity` | Ingesta de entidades en grafo Kùzu | ❌ |
-| `kuzu_cypher_query` | Query Cypher read-only (allowlist) | ❌ |
-| `audit_verify` | Verificación integridad ledger forense | ❌ |
-| `export_graph` | Export completo de grafo como JSON | ❌ |
