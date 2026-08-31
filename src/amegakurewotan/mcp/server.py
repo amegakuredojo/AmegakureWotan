@@ -771,5 +771,11 @@ async def main() -> None:
         sys.exit(99)
 
 
-if __name__ == "__main__":
+def run_server() -> None:
+    """Entry point síncrono para CLI/pipx (amewotan-mcp)."""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    run_server()
+

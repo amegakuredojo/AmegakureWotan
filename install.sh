@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # FORGE_CONTEXT: CIVIL
 # FORGE_VERSION: 3.0
-# FORGE_DATE: 2026-07-05T15:43:00Z
 # ==============================================================================
-# AmegakureWotan - Installation & Bootstrap Script
+# AmegakureWotan — Zero-Config Native Installer (pipx / pip)
 # ==============================================================================
-# This script initializes the project environment and creates a global CLI wrapper
-# for seamless execution without needing to prefix with `make` or `docker compose`.
+# Installs AmegakureWotan CLI and MCP Server natively on any Linux/Unix/macOS host
+# without Docker, Tor or root requirements.
 # ==============================================================================
 
 set -e
@@ -15,100 +14,93 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
 NC='\033[0m'
 
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║            KARASUGAKURE — OSINT BOOTSTRAP INSTALLER              ║${NC}"
+echo -e "${BLUE}║          🦅 AMEGAKURE WOTAN — ZERO-CONFIG MCP INSTALLER          ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# 1. Dependency Checks
-echo -e "${YELLOW}[*] Checking prerequisites...${NC}"
-if ! command -v docker &> /dev/null; then
-    echo -e "${RED}[!] Docker is not installed. Please install Docker and try again.${NC}"
+# 1. Python Environment Checks
+echo -e "${YELLOW}[*] Comprobando entorno de Python en el host...${NC}"
+PYTHON_BIN=""
+for cmd in python3 python; do
+    if command -v "$cmd" &> /dev/null; then
+        PY_VER=$("$cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+        PY_MAJOR=$("$cmd" -c 'import sys; print(sys.version_info.major)')
+        PY_MINOR=$("$cmd" -c 'import sys; print(sys.version_info.minor)')
+        if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 10 ]; then
+            PYTHON_BIN="$cmd"
+            echo -e "${GREEN}[✔] Python $PY_VER detectado ($cmd).${NC}"
+            break
+        fi
+    fi
+done
+
+if [ -z "$PYTHON_BIN" ]; then
+    echo -e "${RED}[!] Se requiere Python >= 3.10 para ejecutar AmegakureWotan.${NC}"
     exit 1
 fi
 
-if ! command -v docker compose &> /dev/null && ! docker-compose --version &> /dev/null; then
-    echo -e "${RED}[!] Docker Compose is not installed. Please install it and try again.${NC}"
-    exit 1
-fi
-echo -e "${GREEN}[✔] Docker and Docker Compose found.${NC}"
-
-# FIX-05: Auto-copiar .env.example → .env si no existe
-# Esto previene el fallo de `make build` al intentar hacer sed sobre un .env inexistente
-echo -e "\n${YELLOW}[*] Checking .env configuration...${NC}"
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        cp .env.example .env
-        chmod 600 .env
-        echo -e "${GREEN}[✔] .env created from .env.example (chmod 600)${NC}"
-        echo -e "${YELLOW}[!] Review and customize .env before running in production.${NC}"
-    else
-        echo -e "${RED}[!] .env.example not found. Cannot create .env. Aborting.${NC}"
-        exit 1
-    fi
-else
-    echo -e "${GREEN}[✔] .env already exists.${NC}"
-    # Verificar que tiene vars críticas
-    if ! grep -q 'KARASU_IMAGE_HASH' .env; then
-        echo -e "${YELLOW}[!] .env parece incompleto. Haciendo merge de .env.example...${NC}"
-        # Añadir vars faltantes sin sobreescribir las existentes
-        while IFS= read -r line; do
-            key=$(echo "$line" | cut -d'=' -f1)
-            if [ -n "$key" ] && ! grep -q "^${key}=" .env; then
-                echo "$line" >> .env
-            fi
-        done < .env.example
-        echo -e "${GREEN}[✔] .env actualizado con vars faltantes.${NC}"
-    fi
-fi
-
-# 2. Build Docker Environment
-echo -e "\n${YELLOW}[*] Building AmegakureWotan secure containers (this may take a few minutes)...${NC}"
-make build
-
-# 3. Create Global Wrapper
-echo -e "\n${YELLOW}[*] Setting up global CLI wrapper...${NC}"
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
-
-WRAPPER_PATH="$INSTALL_DIR/amewotan"
 CURRENT_DIR=$(pwd)
 
-cat > "$WRAPPER_PATH" << 'EOF'
-#!/usr/bin/env bash
-# AmegakureWotan Global Wrapper
-PROJECT_DIR="CURRENT_DIR_PLACEHOLDER"
-cd "$PROJECT_DIR" || exit 1
-if [ "$1" == "shell" ] || [ "$1" == "test" ]; then
-    make "$@"
+# 2. Instalación vía pipx o venv nativo
+echo -e "\n${YELLOW}[*] Instalando paquete y binarios CLI / MCP...${NC}"
+
+if command -v pipx &> /dev/null; then
+    echo -e "${CYAN}[i] pipx detectado. Instalando paquete en entorno aislado...${NC}"
+    pipx uninstall amegakurewotan &> /dev/null || true
+    pipx install --editable .
+    echo -e "${GREEN}[✔] Instalado exitosamente vía pipx.${NC}"
+
 else
-    docker compose run --rm -v "$PROJECT_DIR/src:/app/src:z" amewotan "$@"
+    echo -e "${CYAN}[i] Configurando entorno virtual nativo (.venv)...${NC}"
+    if [ ! -d ".venv" ]; then
+        "$PYTHON_BIN" -m venv .venv
+    fi
+    ./.venv/bin/pip install --upgrade pip -q
+    ./.venv/bin/pip install -e . -q
+    
+    # Enlazar binarios en ~/.local/bin
+    ln -sf "$CURRENT_DIR/.venv/bin/amewotan" "$INSTALL_DIR/amewotan"
+    ln -sf "$CURRENT_DIR/.venv/bin/amewotan-cli" "$INSTALL_DIR/amewotan-cli"
+    ln -sf "$CURRENT_DIR/.venv/bin/amewotan-mcp" "$INSTALL_DIR/amewotan-mcp"
+    echo -e "${GREEN}[✔] Binarios enlazados en $INSTALL_DIR.${NC}"
 fi
-EOF
 
-# Replace placeholder with absolute path
-sed -i "s|CURRENT_DIR_PLACEHOLDER|$CURRENT_DIR|g" "$WRAPPER_PATH"
-chmod +x "$WRAPPER_PATH"
+# 3. Inicialización de directorios de usuario
+echo -e "\n${YELLOW}[*] Inicializando bóveda local (~/.amegakurewotan)...${NC}"
+"$INSTALL_DIR/amewotan-cli" init
+echo -e "${GREEN}[✔] Bóveda de inteligencia y grafo inicializados.${NC}"
 
-echo -e "${GREEN}[✔] Wrapper installed at $WRAPPER_PATH${NC}"
 
-# 4. Final Instructions
-echo -e "\n${BLUE}======================================================================${NC}"
-echo -e "${GREEN}AmegakureWotan is now fully operational!${NC}"
-echo -e "You can now run the tool from ANYWHERE in your terminal using:"
-echo -e "  ${YELLOW}amewotan --help${NC}"
+
+# 4. Resumen e instrucciones
+echo -e "\n${BLUE}══════════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}¡AmegakureWotan está 100% operativo y listo para usarse!${NC}"
 echo -e ""
-echo -e "Examples:"
-echo -e "  amewotan recon scanme.nmap.org"
-echo -e "  amewotan graph view"
-echo -e "  amewotan shell"
-echo -e "${BLUE}======================================================================${NC}"
+echo -e "Comandos disponibles:"
+echo -e "  • ${YELLOW}amewotan orchestrate <target>${NC} : Reconocimiento OSINT multi-agente"
+echo -e "  • ${YELLOW}amewotan-mcp${NC}                  : Servidor MCP stdio para LLMs"
+echo -e "  • ${YELLOW}amewotan audit verify${NC}         : Verificación forense HMAC-SHA512"
+echo -e ""
+echo -e "Configuración MCP stdio para Antigravity / Claude Desktop:"
+echo -e "${CYAN}  {"
+echo -e "    \"mcpServers\": {"
+echo -e "      \"amegakurewotan\": {"
+echo -e "        \"type\": \"stdio\","
+echo -e "        \"command\": \"amewotan-mcp\""
+echo -e "      }"
+echo -e "    }"
+echo -e "  }${NC}"
+echo -e "${BLUE}══════════════════════════════════════════════════════════════════${NC}"
 
-# Remind to add to PATH if not there
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo -e "${RED}Note: $INSTALL_DIR is not in your PATH.${NC}"
-    echo -e "Add this line to your ~/.bashrc or ~/.zshrc:"
+    echo -e "\n${YELLOW}[!] Asegúrate de que $INSTALL_DIR esté en tu PATH.${NC}"
+    echo -e "Añade a tu ~/.bashrc o ~/.zshrc:"
     echo -e "  export PATH=\"\$HOME/.local/bin:\$PATH\""
 fi
+

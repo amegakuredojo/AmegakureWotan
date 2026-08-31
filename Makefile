@@ -1,98 +1,42 @@
-# Makefile — AmegakureWotan Operation Interface
+# Makefile — AmegakureWotan Native Development & Operation Interface
 
-.PHONY: build up down shell recon humint darkweb correlate report test clean verify-ledger setup test-local cov container-check
+.PHONY: setup install test cov mcp recon verify-ledger clean
 
-# Runtime local (host): venv + podman. CONTAINER_RUNTIME override permite forzar docker.
 VENV_PY := .venv/bin/python3
-CONTAINER_RUNTIME ?= podman
+VENV_PIP := .venv/bin/pip
 
-# Genera hash reproducible del build context para el ledger forense
-BUILD_HASH := $(shell find src/ skills/ pyproject.toml Dockerfile -type f \
-               -exec sha512sum {} \; | sha512sum | cut -d' ' -f1 | head -c 16)
-BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-# ── LIFECYCLE ─────────────────────────────────────────────────────────────────
-build:
-	@echo "[BUILD] Building AmegakureWotan image (build hash: $(BUILD_HASH))..."
-	@docker compose build \
-	  --build-arg IMAGE_BUILD_HASH=$(BUILD_HASH) \
-	  --build-arg BUILD_DATE=$(BUILD_DATE) \
-	  --no-cache
-	@echo "[QA] Running Trivy SAST vulnerability scan..."
-	@docker image save amegakurewotan/amewotan:latest -o /tmp/amewotan-latest.tar
-	@chmod 644 /tmp/amewotan-latest.tar
-	@docker run --rm -v /tmp/amewotan-latest.tar:/tmp/amewotan-latest.tar:z aquasec/trivy image --input /tmp/amewotan-latest.tar --severity CRITICAL
-	@rm /tmp/amewotan-latest.tar
-
-	@echo "[BUILD] Image built. Updating .env with build hash..."
-	@sed -i "s/^AMEWOTAN_IMAGE_HASH=.*/AMEWOTAN_IMAGE_HASH=$(BUILD_HASH)/" .env || \
-	  echo "AMEWOTAN_IMAGE_HASH=$(BUILD_HASH)" >> .env
-	@sed -i "s/^BUILD_DATE=.*/BUILD_DATE=$(BUILD_DATE)/" .env || \
-	  echo "BUILD_DATE=$(BUILD_DATE)" >> .env
-
-up:
-	@echo "[UP] Starting all services (+ Tor + Karasu bootstrap)..."
-	@docker compose up -d tor-proxy
-	@echo "[UP] Waiting for infrastructure..."
-	@sleep 5
-	@docker compose run --rm amegakurewotan --help
-
-down:
-	@docker compose down
-
-# ── COMANDOS OPERACIONALES ────────────────────────────────────────────────────
-shell:
-	@docker compose run --rm -it -v $(PWD)/src:/app/src:z amegakurewotan bash
-
-recon:
-	@docker compose run --rm -v $(PWD)/src:/app/src:z amegakurewotan recon $(TARGET)
-
-humint:
-	@docker compose run --rm -v $(PWD)/src:/app/src:z amegakurewotan humint $(USERNAME)
-
-darkweb:
-	@docker compose run --rm -v $(PWD)/src:/app/src:z amegakurewotan darkweb "$(QUERY)"
-
-correlate:
-	@docker compose run --rm -v $(PWD)/src:/app/src:z amegakurewotan correlate
-
-report:
-	@docker compose run --rm -v $(PWD)/src:/app/src:z amegakurewotan report
-
-# ── TESTING ───────────────────────────────────────────────────────────────────
-test:
-	@docker compose run --rm \
-	  -e AMEWOTAN_RUN_SMOKE_TEST=true \
-	  -e AMEWOTAN_DATA_DIR=/tmp/amegakurewotan_data \
-	  -e KUZU_DATABASE_PATH=/tmp/amegakurewotan_data/amegakurewotan_vault.kuzu \
-	  -v $(PWD)/src:/app/src:z \
-	  -v $(PWD)/tests:/app/tests:z \
-	  amegakurewotan pytest /app/tests/ -v --tb=short
-
-# ── FORENSIC VERIFICATION ─────────────────────────────────────────────────────
-verify-ledger:
-	@docker compose run --rm amegakurewotan audit verify
-
-# ── DESARROLLO LOCAL (host: venv + podman) ────────────────────────────────────
+# ── SETUP & INSTALLATION ──────────────────────────────────────────────────────
 setup:
-	@echo "[SETUP] venv + deps (editable + dev + pytest-timeout)..."
+	@echo "[SETUP] Creando entorno virtual e instalando dependencias en modo editable..."
 	@test -d .venv || python3 -m venv .venv
-	@$(VENV_PY) -m pip install --upgrade pip -q
-	@$(VENV_PY) -m pip install -e ".[dev]" -q
-	@$(VENV_PY) -m pip install pytest-timeout -q
-	@echo "[SETUP] OK. Runtime de contenedores: $(CONTAINER_RUNTIME)"
+	@$(VENV_PIP) install --upgrade pip -q
+	@$(VENV_PIP) install -e ".[dev]" -q
+	@echo "[SETUP] Listo. Para activar: source .venv/bin/activate"
 
-test-local:
-	@AMEWOTAN_OPSEC_BYPASS_TOR=true $(VENV_PY) -m pytest tests/ -q --no-header -p no:cacheprovider --timeout=60
+install:
+	@bash ./install.sh
+
+# ── TESTING & QUALITY ─────────────────────────────────────────────────────────
+test:
+	@$(VENV_PY) -m pytest tests/ -v --tb=short
 
 cov:
-	@AMEWOTAN_OPSEC_BYPASS_TOR=true $(VENV_PY) -m pytest tests/ -q --no-header -p no:cacheprovider \
-	  --timeout=60 --cov=src/amegakurewotan --cov-report=term-missing --cov-fail-under=80
+	@$(VENV_PY) -m pytest tests/ -q --no-header -p no:cacheprovider \
+	  --cov=src/amegakurewotan --cov-report=term-missing --cov-fail-under=80
 
-container-check:
-	@command -v $(CONTAINER_RUNTIME) >/dev/null 2>&1 && echo "[OK] $(CONTAINER_RUNTIME) disponible" || echo "[FALTA] $(CONTAINER_RUNTIME) no encontrado"
+# ── OPERACIONES NATIVAS ───────────────────────────────────────────────────────
+mcp:
+	@$(VENV_PY) -m amegakurewotan.mcp.server
+
+recon:
+	@$(VENV_PY) -m amegakurewotan.cli_wotan orchestrate $(TARGET)
+
+verify-ledger:
+	@$(VENV_PY) -m amegakurewotan.cli_wotan audit verify
 
 # ── CLEANUP ───────────────────────────────────────────────────────────────────
 clean:
-	@docker compose down -v --remove-orphans
-	@docker image rm amegakurewotan/amewotan:latest 2>/dev/null || true
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	@rm -rf .pytest_cache .coverage htmlcov dist build *.egg-info
+

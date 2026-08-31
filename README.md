@@ -38,20 +38,37 @@ Add to your MCP client config (e.g. `~/.gemini/antigravity-cli/config.json` or C
   "mcpServers": {
     "amegakurewotan": {
       "type": "stdio",
-      "command": "python",
-      "args": [
-        "-m",
-        "amegakurewotan.mcp.server"
-      ]
+      "command": "amewotan-mcp"
     }
   }
 }
 ```
 
+---
+
+## 📦 Installation
+
+### Option 1: Using pipx (Recommended)
+```bash
+pipx install .
+```
+
+### Option 2: Using the native installer script
+```bash
+./install.sh
+```
+
+### Option 3: Standard pip / virtualenv
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
 
 ---
 
 ## ⚔️ Usage & Commands
+
 
 Once installed, AmegakureWotan acts as a native CLI tool. You do not need to be in the project folder to run it.
 

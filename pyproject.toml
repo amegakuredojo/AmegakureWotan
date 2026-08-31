@@ -41,8 +41,10 @@ dev = [
 ]
 
 [project.scripts]
-amewotan-cli = "amegakurewotan.cli:app"
 amewotan = "amegakurewotan.cli_wotan:main"
+amewotan-cli = "amegakurewotan.cli:app"
+amewotan-mcp = "amegakurewotan.mcp.server:run_server"
+
 
 [tool.setuptools]
 package-dir = {"" = "src"}
